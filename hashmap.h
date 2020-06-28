@@ -35,7 +35,7 @@
 #if defined(_MSC_VER)
 // Workaround a bug in the MSVC runtime where it uses __cplusplus when not
 // defined.
-#pragma warning(push)
+#pragma warning(push, 0)
 #pragma warning(disable : 4668)
 #endif
 #include <stdlib.h>
