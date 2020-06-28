@@ -7,7 +7,7 @@ UTEST(cpp11, create) {
   hashmap_destroy(&hashmap);
 }
 
-static int set_context(void *const context, void *const element) {
+static int set_context(void *const context, void *const element) noexcept {
   *static_cast<int *>(context) = *static_cast<int *>(element);
   return 1;
 }
@@ -17,7 +17,8 @@ UTEST(cpp11, put) {
   int x = 42;
   int y = 13;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
-  ASSERT_EQ(0, hashmap_put(&hashmap, "foo", strlen("foo"), &x));
+  ASSERT_EQ(0, hashmap_put(&hashmap, "foo",
+                           static_cast<unsigned>(strlen("foo")), &x));
   ASSERT_EQ(0, hashmap_iterate(&hashmap, set_context, &y));
   ASSERT_EQ(x, y);
   hashmap_destroy(&hashmap);
@@ -27,16 +28,18 @@ UTEST(cpp11, get_exists) {
   struct hashmap_s hashmap;
   int x = 42;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
-  ASSERT_EQ(0, hashmap_put(&hashmap, "foo", strlen("foo"), &x));
-  ASSERT_EQ(&x,
-            static_cast<int *>(hashmap_get(&hashmap, "foo", strlen("foo"))));
+  ASSERT_EQ(0, hashmap_put(&hashmap, "foo",
+                           static_cast<unsigned>(strlen("foo")), &x));
+  ASSERT_EQ(&x, static_cast<int *>(hashmap_get(
+                    &hashmap, "foo", static_cast<unsigned>(strlen("foo")))));
   hashmap_destroy(&hashmap);
 }
 
 UTEST(cpp11, get_does_not_exists) {
   struct hashmap_s hashmap;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
-  ASSERT_FALSE(hashmap_get(&hashmap, "foo", strlen("foo")));
+  ASSERT_FALSE(
+      hashmap_get(&hashmap, "foo", static_cast<unsigned>(strlen("foo"))));
   hashmap_destroy(&hashmap);
 }
 
@@ -44,12 +47,14 @@ UTEST(cpp11, remove) {
   struct hashmap_s hashmap;
   int x = 42;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
-  ASSERT_EQ(0, hashmap_put(&hashmap, "foo", strlen("foo"), &x));
-  ASSERT_EQ(0, hashmap_remove(&hashmap, "foo", strlen("foo")));
+  ASSERT_EQ(0, hashmap_put(&hashmap, "foo",
+                           static_cast<unsigned>(strlen("foo")), &x));
+  ASSERT_EQ(
+      0, hashmap_remove(&hashmap, "foo", static_cast<unsigned>(strlen("foo"))));
   hashmap_destroy(&hashmap);
 }
 
-static int early_exit(void *const context, void *const element) {
+static int early_exit(void *const context, void *const element) noexcept {
   *static_cast<int *>(context) += 1;
   *static_cast<int *>(element) += 1;
   return 0;
@@ -90,7 +95,7 @@ UTEST(cpp11, iterate_early_exit) {
   hashmap_destroy(&hashmap);
 }
 
-static int all(void *const context, void *const element) {
+static int all(void *const context, void *const element) noexcept {
   *static_cast<int *>(context) += 1;
   *static_cast<int *>(element) += 1;
   return 1;
@@ -129,9 +134,11 @@ UTEST(cpp11, size) {
   int x = 42;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
   ASSERT_EQ(0u, hashmap_size(&hashmap));
-  ASSERT_EQ(0, hashmap_put(&hashmap, "foo", strlen("foo"), &x));
+  ASSERT_EQ(0, hashmap_put(&hashmap, "foo",
+                           static_cast<unsigned>(strlen("foo")), &x));
   ASSERT_EQ(1u, hashmap_size(&hashmap));
-  ASSERT_EQ(0, hashmap_remove(&hashmap, "foo", strlen("foo")));
+  ASSERT_EQ(
+      0, hashmap_remove(&hashmap, "foo", static_cast<unsigned>(strlen("foo"))));
   ASSERT_EQ(0u, hashmap_size(&hashmap));
   hashmap_destroy(&hashmap);
 }

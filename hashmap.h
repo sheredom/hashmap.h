@@ -32,8 +32,17 @@
 #ifndef SHEREDOM_HASHMAP_H_INCLUDED
 #define SHEREDOM_HASHMAP_H_INCLUDED
 
+#if defined(_MSC_VER)
+// Workaround a bug in the MSVC runtime where it uses __cplusplus when not
+// defined.
+#pragma warning(disable : 4668)
+#pragma warning(push, 1)
+#endif
 #include <stdlib.h>
 #include <string.h>
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 #if defined(_MSC_VER)
 #define HASHMAP_WEAK __forceinline
@@ -119,7 +128,7 @@ HASHMAP_WEAK unsigned long hashmap_crc32_helper(const char *const s,
                                                 const unsigned len);
 HASHMAP_WEAK unsigned
 hashmap_hash_helper_int_helper(const struct hashmap_s *const m,
-                               const char *const keystring, unsigned len);
+                               const char *const keystring, const unsigned len);
 HASHMAP_WEAK int
 hashmap_match_helper(const struct hashmap_element_s *const element,
                      const char *const key, const unsigned len);
