@@ -45,7 +45,7 @@
 #endif
 
 #if defined(_MSC_VER)
-#define HASHMAP_WEAK __forceinline
+#define HASHMAP_WEAK __inline
 #else
 #define HASHMAP_WEAK __attribute__((weak))
 #endif
