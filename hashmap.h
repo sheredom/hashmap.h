@@ -91,6 +91,10 @@ HASHMAP_WEAK int hashmap_create(unsigned initial_size,
 /// @param len The length of the string key.
 /// @param value The value to insert.
 /// @return On success 0 is returned.
+///
+/// The key string slice is not copied when creating the hashmap entry, and thus
+/// must remain a valid pointer until the hashmap entry is removed or the
+/// hashmap is destroyed.
 HASHMAP_WEAK int hashmap_put(struct hashmap_s *const hashmap,
                              const char *const key, const unsigned len,
                              void *const value);
@@ -115,7 +119,8 @@ HASHMAP_WEAK int hashmap_remove(struct hashmap_s *const hashmap,
 /// @param hashmap The hashmap to insert into.
 /// @param f The function pointer to call on each element.
 /// @param context The context to pass as the first argument to f.
-/// @return On success 0 is returned.
+/// @return If the entire hashmap was iterated then 0 is returned. Otherwise if
+/// the callback function f returned non-zero then non-zsero is returned.
 HASHMAP_WEAK int hashmap_iterate(const struct hashmap_s *const hashmap,
                                  int (*f)(void *const context,
                                           void *const value),
@@ -124,7 +129,8 @@ HASHMAP_WEAK int hashmap_iterate(const struct hashmap_s *const hashmap,
 /// @brief Get the size of the hashmap.
 /// @param hashmap The hashmap to get the size of.
 /// @return The size of the hashmap.
-HASHMAP_WEAK unsigned hashmap_size(const struct hashmap_s *const hashmap);
+HASHMAP_WEAK unsigned
+hashmap_num_entries(const struct hashmap_s *const hashmap);
 
 /// @brief Destroy the hashmap.
 /// @param hashmap The hashmap to destroy.
@@ -192,9 +198,6 @@ int hashmap_put(struct hashmap_s *const m, const char *const key,
   return 0;
 }
 
-/*
- * Get an element from the hashmap. REturns the element or NULL.
- */
 void *hashmap_get(const struct hashmap_s *const m, const char *const key,
                   const unsigned len) {
   unsigned int curr;
@@ -218,9 +221,6 @@ void *hashmap_get(const struct hashmap_s *const m, const char *const key,
   return HASHMAP_NULL;
 }
 
-/*
- * Remove an element from the hashmap. Return MAP_OK or MAP_MISSING.
- */
 int hashmap_remove(struct hashmap_s *const m, const char *const key,
                    const unsigned len) {
   unsigned int i;
@@ -249,13 +249,6 @@ int hashmap_remove(struct hashmap_s *const m, const char *const key,
   return 1;
 }
 
-/*
- * Iteratively call f with argument (item, data) for
- * each element data in the hashmap. The function must
- * return a map status code. If it returns anything other
- * than MAP_OK the traversal is terminated. f must
- * not reenter any hashmap functions, or deadlock may arise.
- */
 int hashmap_iterate(const struct hashmap_s *const m,
                     int (*f)(void *const, void *const), void *const context) {
   unsigned int i;
@@ -271,18 +264,14 @@ int hashmap_iterate(const struct hashmap_s *const m,
   return 0;
 }
 
-/*
- * Free the hashmap
- */
 void hashmap_destroy(struct hashmap_s *const m) {
   free(m->data);
   memset(m, 0, sizeof(struct hashmap_s));
 }
 
-/*
- * Get the current size of a hashmap
- */
-unsigned hashmap_size(const struct hashmap_s *const m) { return m->size; }
+unsigned hashmap_num_entries(const struct hashmap_s *const m) {
+  return m->size;
+}
 
 unsigned long hashmap_crc32_helper(const char *const s, const unsigned len) {
   static const unsigned long crc32_tab[] = {

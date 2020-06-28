@@ -13,6 +13,138 @@ The current supported compilers are gcc, clang and msvc.
 
 The current supported platforms are Linux, macOS and Windows.
 
+### Fundamental Design
+
+The hashmap is made to work with UTF-8 string slices - sections of strings that
+are passed with a pointer and an explicit length. The reason for this design
+choice was that the hashmap is being used, by the author, to map symbols that
+are already resident in memory from a source file of a programming language. To
+save from causing millions of additional allocations to move these UTF-8 string
+slices into null-terminated strings, an explicit length is always passed.
+
+Note also that while the API passes char* pointers as the key - these keys are
+never used with the C API string functions. Instead `memcmp` is used to compare
+keys. This allows us to use UTF-8 strings in place of regular ASCII strings with
+no additional code.
+
+### Create a Hashmap
+
+To create a hashmap call the `hashmap_create` function:
+
+```c
+const unsigned initial_size = 4;
+struct hashmap_s hashmap;
+if (0 != hashmap_create(initial_size, &hashmap)) {
+  // error!
+}
+```
+
+The `initial_size` parameter only sets the initial size of the hashmap - which
+can grow if multiple keys hit the same hash entry.
+
+### Put Something in a Hashmap
+
+To put an item in the hashmap use the `hashmap_put` function:
+
+```c
+int meaning_of_life = 42;
+char question = 6 * 8;
+
+if (0 != hashmap_put(&hashmap, "life", strlen("life"), &meaning_of_life)) {
+  // error!
+}
+
+if (0 != hashmap_put(&hashmap, "?", strlen("?"), &question)) {
+  // error!
+}
+```
+
+Notice that multiple entries of _differing_ types can exist in the same hashmap.
+The hashmap is not typed - it can store any `void*` data as the value for a key.
+
+### Get Something from a Hashmap
+
+To get an entry from a hashmap use the `hashmap_get` function:
+
+```c
+void* const element = hashmap_get(&hashmap, "x", strlen("x"));
+if (NULL == element) {
+  // error!
+}
+```
+
+The function will return `NULL` if the element is not found. Note that the key
+used to get an element does not have to be the same pointer used to put an
+element in the hashmap - but the string slice must match for a hit to occur.
+
+### Remove Something from a Hashmap
+
+To remove an entry from a hashmap use the `hashmap_remove` function:
+
+```c
+if (0 != hashmap_remove(&hashmap, "x", strlen("x"))) {
+  // error!
+}
+```
+
+The function will return non-zero if the element is not found. Note that the key
+used to get an element does not have to be the same pointer used to put an
+element in the hashmap - but the string slice must match for a hit to occur.
+
+### Iterate Over a Hashmap
+
+You can iterate over all the elements stored in the hashmap with the
+`hashmap_iterate` function:
+
+```c
+static int iterate(void* const context, void* const value) {
+  // If the value is 42...
+  if (42 == *(int*)value) {
+    // Store into our user-provided context the value.
+    *(void**) = value;
+
+    // Return 0 to tell the iteration to stop here.
+    return 0;
+  }
+
+  // Otherwise tell the iteration to keep going.
+  return 1;
+}
+
+int* value;
+if (0 != hashmap_iterate(&hashmap, iterate, &value)) {
+  if (*value != 42) {
+    // error!
+  }
+} else {
+  // if we got here it means we never found 42 in the hashmap
+}
+```
+
+You can early exit from the iteration of the hashmap by returning non-zero from
+your callback function - perhaps you want to process and remove all elements
+from the hashmap or search for a specific value only. Otherwise if zero is
+returned from your callback then the iteration will encompass the entire
+hashmap.
+
+### Get the Number of Entries in a Hashmap
+
+To get the number of entries that have been put into a hashmap use the
+`hashmap_num_entries` function:
+
+```c
+unsigned num_entries = hashmap_num_entries(&hashmap);
+```
+
+### Destroy a Hashmap
+
+To destroy a hashmap when you are finished with it use the `hashmap_destroy`
+function:
+
+```c
+hashmap_destroy(&hashmap);
+```
+
 ## CRC32 Function
 
 The implementation here was originally done by Gary S. Brown in 1986, who let
@@ -40,15 +172,15 @@ be right-shifted by eight bits by the "updcrc" logic; the shift must be unsigned
 (bring in zeroes). On some hardware you could probably optimize the shift in
 assembler by using byte-swap instructions.
 
-## Ownership
+## Code Ownership
 
 This code was almost entirely written by the awesome
 [Pete Warden](https://twitter.com/petewarden), based on a now defunct
 [blog post](https://web.archive.org/web/20160329102146/http://elliottback.com/wp/hashmap-implementation-in-c/)
 by Elliott Back. The author has applied the following further changes:
 
-- Merged the .c / .h to create a single header (meaning easier integrations in
-  build systems).
+- Merged the .c / .h to create a single header (meaning easier integrations with
+  external projects).
 - Used an explicitly public domain license for the code - the
   [unlicense](https://unlicense.org/).
 - Changed the API to take string slices (pointer & length) instead of null

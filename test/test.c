@@ -123,14 +123,14 @@ UTEST(c, iterate_all) {
   hashmap_destroy(&hashmap);
 }
 
-UTEST(c, size) {
+UTEST(c, num_entries) {
   struct hashmap_s hashmap;
   int x = 42;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
-  ASSERT_EQ(0u, hashmap_size(&hashmap));
+  ASSERT_EQ(0u, hashmap_num_entries(&hashmap));
   ASSERT_EQ(0, hashmap_put(&hashmap, "foo", (unsigned)strlen("foo"), &x));
-  ASSERT_EQ(1u, hashmap_size(&hashmap));
+  ASSERT_EQ(1u, hashmap_num_entries(&hashmap));
   ASSERT_EQ(0, hashmap_remove(&hashmap, "foo", (unsigned)strlen("foo")));
-  ASSERT_EQ(0u, hashmap_size(&hashmap));
+  ASSERT_EQ(0u, hashmap_num_entries(&hashmap));
   hashmap_destroy(&hashmap);
 }
