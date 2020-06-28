@@ -35,13 +35,19 @@
 #if defined(_MSC_VER)
 // Workaround a bug in the MSVC runtime where it uses __cplusplus when not
 // defined.
+#pragma warning(push)
 #pragma warning(disable : 4668)
-#pragma warning(push, 1)
 #endif
 #include <stdlib.h>
 #include <string.h>
 #if defined(_MSC_VER)
 #pragma warning(pop)
+#endif
+
+#if defined(_MSC_VER)
+// Stop MSVC complaining about not inlining functions.
+#pragma warning(push)
+#pragma warning(disable : 4710)
 #endif
 
 #if defined(_MSC_VER)
@@ -446,5 +452,9 @@ int hashmap_rehash_helper(struct hashmap_s *const m) {
 
   return 0;
 }
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 #endif
