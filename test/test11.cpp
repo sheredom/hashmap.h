@@ -1,13 +1,23 @@
 #include "hashmap.h"
 #include "utest.h"
 
+// Old MSVC doesn't support noexcept
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+#define NOTHROW __declspec(nothrow)
+#define NOEXCEPT
+#else
+#define NOTHROW
+#define NOEXCEPT noexcept
+#endif
+
 UTEST(cpp11, create) {
   struct hashmap_s hashmap;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
   hashmap_destroy(&hashmap);
 }
 
-static int set_context(void *const context, void *const element) noexcept {
+static int NOTHROW set_context(void *const context,
+                               void *const element) NOEXCEPT {
   *static_cast<int *>(context) = *static_cast<int *>(element);
   return 1;
 }
@@ -54,7 +64,8 @@ UTEST(cpp11, remove) {
   hashmap_destroy(&hashmap);
 }
 
-static int early_exit(void *const context, void *const element) noexcept {
+static int NOTHROW early_exit(void *const context,
+                              void *const element) NOEXCEPT {
   *static_cast<int *>(context) += 1;
   *static_cast<int *>(element) += 1;
   return 0;
@@ -95,7 +106,7 @@ UTEST(cpp11, iterate_early_exit) {
   hashmap_destroy(&hashmap);
 }
 
-static int all(void *const context, void *const element) noexcept {
+static int NOTHROW all(void *const context, void *const element) NOEXCEPT {
   *static_cast<int *>(context) += 1;
   *static_cast<int *>(element) += 1;
   return 1;
