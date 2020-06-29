@@ -7,6 +7,11 @@ UTEST(c, create) {
   hashmap_destroy(&hashmap);
 }
 
+UTEST(c, create_not_power_of_two) {
+  struct hashmap_s hashmap;
+  ASSERT_EQ(1, hashmap_create(3, &hashmap));
+}
+
 static int set_context(void *const context, void *const element) {
   *(int *)context = *(int *)element;
   return 1;
@@ -133,4 +138,11 @@ UTEST(c, num_entries) {
   ASSERT_EQ(0, hashmap_remove(&hashmap, "foo", (unsigned)strlen("foo")));
   ASSERT_EQ(0u, hashmap_num_entries(&hashmap));
   hashmap_destroy(&hashmap);
+}
+
+// Define a global function that uses the crc32 helper so we can test it against
+// the SSE 4.2 version.
+unsigned crc32_scalar(const char *const s, const unsigned len);
+unsigned crc32_scalar(const char *const s, const unsigned len) {
+  return hashmap_crc32_helper(s, len);
 }
