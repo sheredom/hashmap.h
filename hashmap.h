@@ -40,20 +40,32 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
+
+#if (defined(_MSC_VER) && defined(__AVX__)) ||                                 \
+    (!defined(_MSC_VER) && defined(__SSE4_2__))
+#define HASHMAP_SSE42
+#endif
+
+#if defined(HASHMAP_SSE42)
+#include <nmmintrin.h>
+#endif
+
 #if defined(_MSC_VER)
 #pragma warning(pop)
 #endif
 
 #if defined(_MSC_VER)
-// Stop MSVC complaining about not inlining functions.
 #pragma warning(push)
+// Stop MSVC complaining about not inlining functions.
 #pragma warning(disable : 4710)
+// Stop MSVC complaining about inlining functions!
+#pragma warning(disable : 4711)
 #endif
 
 #if defined(_MSC_VER)
-#define HASHMAP_WEAK __inline
+#define HASHMAP_UNUSED
 #else
-#define HASHMAP_WEAK __attribute__((weak))
+#define HASHMAP_UNUSED
 #endif
 
 /* We need to keep keys and values. */
@@ -79,11 +91,14 @@ extern "C" {
 #endif
 
 /// @brief Create a hashmap.
-/// @param initial_size The initial size of the hashmap.
+/// @param initial_size The initial size of the hashmap. Must be a power of two.
 /// @param out_hashmap The storage for the created hashmap.
 /// @return On success 0 is returned.
-HASHMAP_WEAK int hashmap_create(unsigned initial_size,
-                                struct hashmap_s *out_hashmap);
+///
+/// Note that the initial size of the hashmap must be a power of two, and
+/// creation of the hashmap will fail if this is not the case.
+static int hashmap_create(const unsigned initial_size,
+                          struct hashmap_s *const out_hashmap) HASHMAP_UNUSED;
 
 /// @brief Put an element into the hashmap.
 /// @param hashmap The hashmap to insert into.
@@ -95,25 +110,26 @@ HASHMAP_WEAK int hashmap_create(unsigned initial_size,
 /// The key string slice is not copied when creating the hashmap entry, and thus
 /// must remain a valid pointer until the hashmap entry is removed or the
 /// hashmap is destroyed.
-HASHMAP_WEAK int hashmap_put(struct hashmap_s *const hashmap,
-                             const char *const key, const unsigned len,
-                             void *const value);
+static int hashmap_put(struct hashmap_s *const hashmap, const char *const key,
+                       const unsigned len, void *const value) HASHMAP_UNUSED;
 
 /// @brief Get an element from the hashmap.
 /// @param hashmap The hashmap to get from.
 /// @param key The string key to use.
 /// @param len The length of the string key.
 /// @return The previously set element, or NULL if none exists.
-HASHMAP_WEAK void *hashmap_get(const struct hashmap_s *const hashmap,
-                               const char *const key, const unsigned len);
+static void *hashmap_get(const struct hashmap_s *const hashmap,
+                         const char *const key,
+                         const unsigned len) HASHMAP_UNUSED;
 
 /// @brief Remove an element from the hashmap.
 /// @param hashmap The hashmap to remove from.
 /// @param key The string key to use.
 /// @param len The length of the string key.
 /// @return On success 0 is returned.
-HASHMAP_WEAK int hashmap_remove(struct hashmap_s *const hashmap,
-                                const char *const key, const unsigned len);
+static int hashmap_remove(struct hashmap_s *const hashmap,
+                          const char *const key,
+                          const unsigned len) HASHMAP_UNUSED;
 
 /// @brief Iterate over all the elements in a hashmap.
 /// @param hashmap The hashmap to insert into.
@@ -121,33 +137,33 @@ HASHMAP_WEAK int hashmap_remove(struct hashmap_s *const hashmap,
 /// @param context The context to pass as the first argument to f.
 /// @return If the entire hashmap was iterated then 0 is returned. Otherwise if
 /// the callback function f returned non-zero then non-zsero is returned.
-HASHMAP_WEAK int hashmap_iterate(const struct hashmap_s *const hashmap,
-                                 int (*f)(void *const context,
-                                          void *const value),
-                                 void *const context);
+static int hashmap_iterate(const struct hashmap_s *const hashmap,
+                           int (*f)(void *const context, void *const value),
+                           void *const context) HASHMAP_UNUSED;
 
 /// @brief Get the size of the hashmap.
 /// @param hashmap The hashmap to get the size of.
 /// @return The size of the hashmap.
-HASHMAP_WEAK unsigned
-hashmap_num_entries(const struct hashmap_s *const hashmap);
+static unsigned
+hashmap_num_entries(const struct hashmap_s *const hashmap) HASHMAP_UNUSED;
 
 /// @brief Destroy the hashmap.
 /// @param hashmap The hashmap to destroy.
-HASHMAP_WEAK void hashmap_destroy(struct hashmap_s *const hashmap);
+static void hashmap_destroy(struct hashmap_s *const hashmap) HASHMAP_UNUSED;
 
-HASHMAP_WEAK unsigned long hashmap_crc32_helper(const char *const s,
-                                                const unsigned len);
-HASHMAP_WEAK unsigned
+static unsigned hashmap_crc32_helper(const char *const s,
+                                     const unsigned len) HASHMAP_UNUSED;
+static unsigned
 hashmap_hash_helper_int_helper(const struct hashmap_s *const m,
-                               const char *const keystring, const unsigned len);
-HASHMAP_WEAK int
-hashmap_match_helper(const struct hashmap_element_s *const element,
-                     const char *const key, const unsigned len);
-HASHMAP_WEAK int hashmap_hash_helper(const struct hashmap_s *const m,
-                                     const char *const key, const unsigned len,
-                                     unsigned *const out_index);
-HASHMAP_WEAK int hashmap_rehash_helper(struct hashmap_s *const m);
+                               const char *const keystring,
+                               const unsigned len) HASHMAP_UNUSED;
+static int hashmap_match_helper(const struct hashmap_element_s *const element,
+                                const char *const key,
+                                const unsigned len) HASHMAP_UNUSED;
+static int hashmap_hash_helper(const struct hashmap_s *const m,
+                               const char *const key, const unsigned len,
+                               unsigned *const out_index) HASHMAP_UNUSED;
+static int hashmap_rehash_helper(struct hashmap_s *const m) HASHMAP_UNUSED;
 
 #if defined(__cplusplus)
 }
@@ -163,7 +179,12 @@ HASHMAP_WEAK int hashmap_rehash_helper(struct hashmap_s *const m);
 #define HASHMAP_NULL 0
 #endif
 
-int hashmap_create(unsigned initial_size, struct hashmap_s *out_hashmap) {
+int hashmap_create(const unsigned initial_size,
+                   struct hashmap_s *const out_hashmap) {
+  if (0 != (initial_size & (initial_size - 1))) {
+    return 1;
+  }
+
   out_hashmap->data =
       HASHMAP_CAST(struct hashmap_element_s *,
                    calloc(initial_size, sizeof(struct hashmap_element_s)));
@@ -273,77 +294,85 @@ unsigned hashmap_num_entries(const struct hashmap_s *const m) {
   return m->size;
 }
 
-unsigned long hashmap_crc32_helper(const char *const s, const unsigned len) {
-  static const unsigned long crc32_tab[] = {
-      0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
-      0x706af48fL, 0xe963a535L, 0x9e6495a3L, 0x0edb8832L, 0x79dcb8a4L,
-      0xe0d5e91eL, 0x97d2d988L, 0x09b64c2bL, 0x7eb17cbdL, 0xe7b82d07L,
-      0x90bf1d91L, 0x1db71064L, 0x6ab020f2L, 0xf3b97148L, 0x84be41deL,
-      0x1adad47dL, 0x6ddde4ebL, 0xf4d4b551L, 0x83d385c7L, 0x136c9856L,
-      0x646ba8c0L, 0xfd62f97aL, 0x8a65c9ecL, 0x14015c4fL, 0x63066cd9L,
-      0xfa0f3d63L, 0x8d080df5L, 0x3b6e20c8L, 0x4c69105eL, 0xd56041e4L,
-      0xa2677172L, 0x3c03e4d1L, 0x4b04d447L, 0xd20d85fdL, 0xa50ab56bL,
-      0x35b5a8faL, 0x42b2986cL, 0xdbbbc9d6L, 0xacbcf940L, 0x32d86ce3L,
-      0x45df5c75L, 0xdcd60dcfL, 0xabd13d59L, 0x26d930acL, 0x51de003aL,
-      0xc8d75180L, 0xbfd06116L, 0x21b4f4b5L, 0x56b3c423L, 0xcfba9599L,
-      0xb8bda50fL, 0x2802b89eL, 0x5f058808L, 0xc60cd9b2L, 0xb10be924L,
-      0x2f6f7c87L, 0x58684c11L, 0xc1611dabL, 0xb6662d3dL, 0x76dc4190L,
-      0x01db7106L, 0x98d220bcL, 0xefd5102aL, 0x71b18589L, 0x06b6b51fL,
-      0x9fbfe4a5L, 0xe8b8d433L, 0x7807c9a2L, 0x0f00f934L, 0x9609a88eL,
-      0xe10e9818L, 0x7f6a0dbbL, 0x086d3d2dL, 0x91646c97L, 0xe6635c01L,
-      0x6b6b51f4L, 0x1c6c6162L, 0x856530d8L, 0xf262004eL, 0x6c0695edL,
-      0x1b01a57bL, 0x8208f4c1L, 0xf50fc457L, 0x65b0d9c6L, 0x12b7e950L,
-      0x8bbeb8eaL, 0xfcb9887cL, 0x62dd1ddfL, 0x15da2d49L, 0x8cd37cf3L,
-      0xfbd44c65L, 0x4db26158L, 0x3ab551ceL, 0xa3bc0074L, 0xd4bb30e2L,
-      0x4adfa541L, 0x3dd895d7L, 0xa4d1c46dL, 0xd3d6f4fbL, 0x4369e96aL,
-      0x346ed9fcL, 0xad678846L, 0xda60b8d0L, 0x44042d73L, 0x33031de5L,
-      0xaa0a4c5fL, 0xdd0d7cc9L, 0x5005713cL, 0x270241aaL, 0xbe0b1010L,
-      0xc90c2086L, 0x5768b525L, 0x206f85b3L, 0xb966d409L, 0xce61e49fL,
-      0x5edef90eL, 0x29d9c998L, 0xb0d09822L, 0xc7d7a8b4L, 0x59b33d17L,
-      0x2eb40d81L, 0xb7bd5c3bL, 0xc0ba6cadL, 0xedb88320L, 0x9abfb3b6L,
-      0x03b6e20cL, 0x74b1d29aL, 0xead54739L, 0x9dd277afL, 0x04db2615L,
-      0x73dc1683L, 0xe3630b12L, 0x94643b84L, 0x0d6d6a3eL, 0x7a6a5aa8L,
-      0xe40ecf0bL, 0x9309ff9dL, 0x0a00ae27L, 0x7d079eb1L, 0xf00f9344L,
-      0x8708a3d2L, 0x1e01f268L, 0x6906c2feL, 0xf762575dL, 0x806567cbL,
-      0x196c3671L, 0x6e6b06e7L, 0xfed41b76L, 0x89d32be0L, 0x10da7a5aL,
-      0x67dd4accL, 0xf9b9df6fL, 0x8ebeeff9L, 0x17b7be43L, 0x60b08ed5L,
-      0xd6d6a3e8L, 0xa1d1937eL, 0x38d8c2c4L, 0x4fdff252L, 0xd1bb67f1L,
-      0xa6bc5767L, 0x3fb506ddL, 0x48b2364bL, 0xd80d2bdaL, 0xaf0a1b4cL,
-      0x36034af6L, 0x41047a60L, 0xdf60efc3L, 0xa867df55L, 0x316e8eefL,
-      0x4669be79L, 0xcb61b38cL, 0xbc66831aL, 0x256fd2a0L, 0x5268e236L,
-      0xcc0c7795L, 0xbb0b4703L, 0x220216b9L, 0x5505262fL, 0xc5ba3bbeL,
-      0xb2bd0b28L, 0x2bb45a92L, 0x5cb36a04L, 0xc2d7ffa7L, 0xb5d0cf31L,
-      0x2cd99e8bL, 0x5bdeae1dL, 0x9b64c2b0L, 0xec63f226L, 0x756aa39cL,
-      0x026d930aL, 0x9c0906a9L, 0xeb0e363fL, 0x72076785L, 0x05005713L,
-      0x95bf4a82L, 0xe2b87a14L, 0x7bb12baeL, 0x0cb61b38L, 0x92d28e9bL,
-      0xe5d5be0dL, 0x7cdcefb7L, 0x0bdbdf21L, 0x86d3d2d4L, 0xf1d4e242L,
-      0x68ddb3f8L, 0x1fda836eL, 0x81be16cdL, 0xf6b9265bL, 0x6fb077e1L,
-      0x18b74777L, 0x88085ae6L, 0xff0f6a70L, 0x66063bcaL, 0x11010b5cL,
-      0x8f659effL, 0xf862ae69L, 0x616bffd3L, 0x166ccf45L, 0xa00ae278L,
-      0xd70dd2eeL, 0x4e048354L, 0x3903b3c2L, 0xa7672661L, 0xd06016f7L,
-      0x4969474dL, 0x3e6e77dbL, 0xaed16a4aL, 0xd9d65adcL, 0x40df0b66L,
-      0x37d83bf0L, 0xa9bcae53L, 0xdebb9ec5L, 0x47b2cf7fL, 0x30b5ffe9L,
-      0xbdbdf21cL, 0xcabac28aL, 0x53b39330L, 0x24b4a3a6L, 0xbad03605L,
-      0xcdd70693L, 0x54de5729L, 0x23d967bfL, 0xb3667a2eL, 0xc4614ab8L,
-      0x5d681b02L, 0x2a6f2b94L, 0xb40bbe37L, 0xc30c8ea1L, 0x5a05df1bL,
-      0x2d02ef8dL};
-
+unsigned hashmap_crc32_helper(const char *const s, const unsigned len) {
   unsigned i;
-  unsigned long crc32val;
+  unsigned crc32val = 0;
 
-  crc32val = 0;
+#if defined(HASHMAP_SSE42)
   for (i = 0; i < len; i++) {
-    crc32val =
-        crc32_tab[(crc32val ^ HASHMAP_CAST(unsigned long, s[i])) & 0xff] ^
-        (crc32val >> 8);
+    crc32val = _mm_crc32_u8(crc32val, HASHMAP_CAST(unsigned char, s[i]));
+  }
+
+  return crc32val;
+#else
+  // Using polynomial 0x11EDC6F41 to match SSE 4.2's crc function.
+  static const unsigned crc32_tab[] = {
+      0x00000000U, 0xF26B8303U, 0xE13B70F7U, 0x1350F3F4U, 0xC79A971FU,
+      0x35F1141CU, 0x26A1E7E8U, 0xD4CA64EBU, 0x8AD958CFU, 0x78B2DBCCU,
+      0x6BE22838U, 0x9989AB3BU, 0x4D43CFD0U, 0xBF284CD3U, 0xAC78BF27U,
+      0x5E133C24U, 0x105EC76FU, 0xE235446CU, 0xF165B798U, 0x030E349BU,
+      0xD7C45070U, 0x25AFD373U, 0x36FF2087U, 0xC494A384U, 0x9A879FA0U,
+      0x68EC1CA3U, 0x7BBCEF57U, 0x89D76C54U, 0x5D1D08BFU, 0xAF768BBCU,
+      0xBC267848U, 0x4E4DFB4BU, 0x20BD8EDEU, 0xD2D60DDDU, 0xC186FE29U,
+      0x33ED7D2AU, 0xE72719C1U, 0x154C9AC2U, 0x061C6936U, 0xF477EA35U,
+      0xAA64D611U, 0x580F5512U, 0x4B5FA6E6U, 0xB93425E5U, 0x6DFE410EU,
+      0x9F95C20DU, 0x8CC531F9U, 0x7EAEB2FAU, 0x30E349B1U, 0xC288CAB2U,
+      0xD1D83946U, 0x23B3BA45U, 0xF779DEAEU, 0x05125DADU, 0x1642AE59U,
+      0xE4292D5AU, 0xBA3A117EU, 0x4851927DU, 0x5B016189U, 0xA96AE28AU,
+      0x7DA08661U, 0x8FCB0562U, 0x9C9BF696U, 0x6EF07595U, 0x417B1DBCU,
+      0xB3109EBFU, 0xA0406D4BU, 0x522BEE48U, 0x86E18AA3U, 0x748A09A0U,
+      0x67DAFA54U, 0x95B17957U, 0xCBA24573U, 0x39C9C670U, 0x2A993584U,
+      0xD8F2B687U, 0x0C38D26CU, 0xFE53516FU, 0xED03A29BU, 0x1F682198U,
+      0x5125DAD3U, 0xA34E59D0U, 0xB01EAA24U, 0x42752927U, 0x96BF4DCCU,
+      0x64D4CECFU, 0x77843D3BU, 0x85EFBE38U, 0xDBFC821CU, 0x2997011FU,
+      0x3AC7F2EBU, 0xC8AC71E8U, 0x1C661503U, 0xEE0D9600U, 0xFD5D65F4U,
+      0x0F36E6F7U, 0x61C69362U, 0x93AD1061U, 0x80FDE395U, 0x72966096U,
+      0xA65C047DU, 0x5437877EU, 0x4767748AU, 0xB50CF789U, 0xEB1FCBADU,
+      0x197448AEU, 0x0A24BB5AU, 0xF84F3859U, 0x2C855CB2U, 0xDEEEDFB1U,
+      0xCDBE2C45U, 0x3FD5AF46U, 0x7198540DU, 0x83F3D70EU, 0x90A324FAU,
+      0x62C8A7F9U, 0xB602C312U, 0x44694011U, 0x5739B3E5U, 0xA55230E6U,
+      0xFB410CC2U, 0x092A8FC1U, 0x1A7A7C35U, 0xE811FF36U, 0x3CDB9BDDU,
+      0xCEB018DEU, 0xDDE0EB2AU, 0x2F8B6829U, 0x82F63B78U, 0x709DB87BU,
+      0x63CD4B8FU, 0x91A6C88CU, 0x456CAC67U, 0xB7072F64U, 0xA457DC90U,
+      0x563C5F93U, 0x082F63B7U, 0xFA44E0B4U, 0xE9141340U, 0x1B7F9043U,
+      0xCFB5F4A8U, 0x3DDE77ABU, 0x2E8E845FU, 0xDCE5075CU, 0x92A8FC17U,
+      0x60C37F14U, 0x73938CE0U, 0x81F80FE3U, 0x55326B08U, 0xA759E80BU,
+      0xB4091BFFU, 0x466298FCU, 0x1871A4D8U, 0xEA1A27DBU, 0xF94AD42FU,
+      0x0B21572CU, 0xDFEB33C7U, 0x2D80B0C4U, 0x3ED04330U, 0xCCBBC033U,
+      0xA24BB5A6U, 0x502036A5U, 0x4370C551U, 0xB11B4652U, 0x65D122B9U,
+      0x97BAA1BAU, 0x84EA524EU, 0x7681D14DU, 0x2892ED69U, 0xDAF96E6AU,
+      0xC9A99D9EU, 0x3BC21E9DU, 0xEF087A76U, 0x1D63F975U, 0x0E330A81U,
+      0xFC588982U, 0xB21572C9U, 0x407EF1CAU, 0x532E023EU, 0xA145813DU,
+      0x758FE5D6U, 0x87E466D5U, 0x94B49521U, 0x66DF1622U, 0x38CC2A06U,
+      0xCAA7A905U, 0xD9F75AF1U, 0x2B9CD9F2U, 0xFF56BD19U, 0x0D3D3E1AU,
+      0x1E6DCDEEU, 0xEC064EEDU, 0xC38D26C4U, 0x31E6A5C7U, 0x22B65633U,
+      0xD0DDD530U, 0x0417B1DBU, 0xF67C32D8U, 0xE52CC12CU, 0x1747422FU,
+      0x49547E0BU, 0xBB3FFD08U, 0xA86F0EFCU, 0x5A048DFFU, 0x8ECEE914U,
+      0x7CA56A17U, 0x6FF599E3U, 0x9D9E1AE0U, 0xD3D3E1ABU, 0x21B862A8U,
+      0x32E8915CU, 0xC083125FU, 0x144976B4U, 0xE622F5B7U, 0xF5720643U,
+      0x07198540U, 0x590AB964U, 0xAB613A67U, 0xB831C993U, 0x4A5A4A90U,
+      0x9E902E7BU, 0x6CFBAD78U, 0x7FAB5E8CU, 0x8DC0DD8FU, 0xE330A81AU,
+      0x115B2B19U, 0x020BD8EDU, 0xF0605BEEU, 0x24AA3F05U, 0xD6C1BC06U,
+      0xC5914FF2U, 0x37FACCF1U, 0x69E9F0D5U, 0x9B8273D6U, 0x88D28022U,
+      0x7AB90321U, 0xAE7367CAU, 0x5C18E4C9U, 0x4F48173DU, 0xBD23943EU,
+      0xF36E6F75U, 0x0105EC76U, 0x12551F82U, 0xE03E9C81U, 0x34F4F86AU,
+      0xC69F7B69U, 0xD5CF889DU, 0x27A40B9EU, 0x79B737BAU, 0x8BDCB4B9U,
+      0x988C474DU, 0x6AE7C44EU, 0xBE2DA0A5U, 0x4C4623A6U, 0x5F16D052U,
+      0xAD7D5351U};
+
+  for (i = 0; i < len; i++) {
+    crc32val = crc32_tab[(HASHMAP_CAST(unsigned char, crc32val) ^
+                          HASHMAP_CAST(unsigned char, s[i]))] ^
+               (crc32val >> 8);
   }
   return crc32val;
+#endif
 }
 
 unsigned hashmap_hash_helper_int_helper(const struct hashmap_s *const m,
                                         const char *const keystring,
                                         const unsigned len) {
-  unsigned long key = hashmap_crc32_helper(keystring, len);
+  unsigned key = hashmap_crc32_helper(keystring, len);
 
   /* Robert Jenkins' 32 bit Mix Function */
   key += (key << 12);
@@ -361,9 +390,8 @@ unsigned hashmap_hash_helper_int_helper(const struct hashmap_s *const m,
   return key % m->table_size;
 }
 
-HASHMAP_WEAK int
-hashmap_match_helper(const struct hashmap_element_s *const element,
-                     const char *const key, const unsigned len) {
+int hashmap_match_helper(const struct hashmap_element_s *const element,
+                         const char *const key, const unsigned len) {
   return (element->key_len == len) && (0 == memcmp(element->key, key, len));
 }
 
@@ -373,7 +401,7 @@ int hashmap_hash_helper(const struct hashmap_s *const m, const char *const key,
   unsigned int i;
 
   /* If full, return immediately */
-  if (m->size >= (m->table_size / 2)) {
+  if (m->size >= m->table_size) {
     return 0;
   }
 
@@ -406,11 +434,13 @@ int hashmap_rehash_helper(struct hashmap_s *const m) {
   unsigned int i;
   unsigned int old_size;
   struct hashmap_element_s *curr;
+  // The minimum new size should always be non-zero.
+  unsigned new_size = (0 == m->table_size) ? 1 : 2 * m->table_size;
 
   /* Setup the new elements */
-  struct hashmap_element_s *const temp = HASHMAP_PTR_CAST(
-      struct hashmap_element_s *,
-      calloc(2 * m->table_size, sizeof(struct hashmap_element_s)));
+  struct hashmap_element_s *const temp =
+      HASHMAP_PTR_CAST(struct hashmap_element_s *,
+                       calloc(new_size, sizeof(struct hashmap_element_s)));
   if (!temp) {
     return 1;
   }
@@ -421,7 +451,7 @@ int hashmap_rehash_helper(struct hashmap_s *const m) {
 
   /* Update the size */
   old_size = m->table_size;
-  m->table_size = 2 * m->table_size;
+  m->table_size = new_size;
   m->size = 0;
 
   /* Rehash the elements */

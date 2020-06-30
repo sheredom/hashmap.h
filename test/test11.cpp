@@ -16,6 +16,11 @@ UTEST(cpp11, create) {
   hashmap_destroy(&hashmap);
 }
 
+UTEST(cpp11, create_not_power_of_two) {
+  struct hashmap_s hashmap;
+  ASSERT_EQ(1, hashmap_create(3, &hashmap));
+}
+
 static int NOTHROW set_context(void *const context,
                                void *const element) NOEXCEPT {
   *static_cast<int *>(context) = *static_cast<int *>(element);

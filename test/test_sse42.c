@@ -1,77 +1,68 @@
 #include "hashmap.h"
 #include "utest.h"
 
-#if defined(_MSC_VER)
-#define NOTHROW __declspec(nothrow)
-#else
-#define NOTHROW
-#endif
-
-UTEST(cpp, create) {
+#if (defined(_MSC_VER) && defined(__AVX__)) ||                                 \
+    (!defined(_MSC_VER) && defined(__SSE4_2__))
+UTEST(c_sse42, create) {
   struct hashmap_s hashmap;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
   hashmap_destroy(&hashmap);
 }
 
-UTEST(cpp, create_not_power_of_two) {
+UTEST(c_sse42, create_not_power_of_two) {
   struct hashmap_s hashmap;
   ASSERT_EQ(1, hashmap_create(3, &hashmap));
 }
 
-static int NOTHROW set_context(void *const context, void *const element) {
-  *static_cast<int *>(context) = *static_cast<int *>(element);
+static int set_context(void *const context, void *const element) {
+  *(int *)context = *(int *)element;
   return 1;
 }
 
-UTEST(cpp, put) {
+UTEST(c_sse42, put) {
   struct hashmap_s hashmap;
   int x = 42;
   int y = 13;
-  ASSERT_EQ(0, hashmap_create(1, &hashmap));
-  ASSERT_EQ(0, hashmap_put(&hashmap, "foo",
-                           static_cast<unsigned>(strlen("foo")), &x));
+  ASSERT_EQ(0, hashmap_create(0, &hashmap));
+  ASSERT_EQ(0, hashmap_put(&hashmap, "foo", (unsigned)strlen("foo"), &x));
+  ASSERT_EQ(0, hashmap_put(&hashmap, "bar", (unsigned)strlen("bar"), &x));
   ASSERT_EQ(0, hashmap_iterate(&hashmap, set_context, &y));
   ASSERT_EQ(x, y);
   hashmap_destroy(&hashmap);
 }
 
-UTEST(cpp, get_exists) {
+UTEST(c_sse42, get_exists) {
   struct hashmap_s hashmap;
   int x = 42;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
-  ASSERT_EQ(0, hashmap_put(&hashmap, "foo",
-                           static_cast<unsigned>(strlen("foo")), &x));
-  ASSERT_EQ(&x, static_cast<int *>(hashmap_get(
-                    &hashmap, "foo", static_cast<unsigned>(strlen("foo")))));
+  ASSERT_EQ(0, hashmap_put(&hashmap, "foo", (unsigned)strlen("foo"), &x));
+  ASSERT_EQ(&x, hashmap_get(&hashmap, "foo", (unsigned)strlen("foo")));
   hashmap_destroy(&hashmap);
 }
 
-UTEST(cpp, get_does_not_exists) {
+UTEST(c_sse42, get_does_not_exists) {
   struct hashmap_s hashmap;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
-  ASSERT_FALSE(
-      hashmap_get(&hashmap, "foo", static_cast<unsigned>(strlen("foo"))));
+  ASSERT_EQ(NULL, hashmap_get(&hashmap, "foo", (unsigned)strlen("foo")));
   hashmap_destroy(&hashmap);
 }
 
-UTEST(cpp, remove) {
+UTEST(c_sse42, remove) {
   struct hashmap_s hashmap;
   int x = 42;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
-  ASSERT_EQ(0, hashmap_put(&hashmap, "foo",
-                           static_cast<unsigned>(strlen("foo")), &x));
-  ASSERT_EQ(
-      0, hashmap_remove(&hashmap, "foo", static_cast<unsigned>(strlen("foo"))));
+  ASSERT_EQ(0, hashmap_put(&hashmap, "foo", (unsigned)strlen("foo"), &x));
+  ASSERT_EQ(0, hashmap_remove(&hashmap, "foo", (unsigned)strlen("foo")));
   hashmap_destroy(&hashmap);
 }
 
-static int NOTHROW early_exit(void *const context, void *const element) {
-  *static_cast<int *>(context) += 1;
-  *static_cast<int *>(element) += 1;
+static int early_exit(void *const context, void *const element) {
+  *(int *)context += 1;
+  *(int *)element += 1;
   return 0;
 }
 
-UTEST(cpp, iterate_early_exit) {
+UTEST(c_sse42, iterate_early_exit) {
   struct hashmap_s hashmap;
   int x[27] = {0};
   int total = 0;
@@ -106,13 +97,13 @@ UTEST(cpp, iterate_early_exit) {
   hashmap_destroy(&hashmap);
 }
 
-static int NOTHROW all(void *const context, void *const element) {
-  *static_cast<int *>(context) += 1;
-  *static_cast<int *>(element) += 1;
+static int all(void *const context, void *const element) {
+  *(int *)context += 1;
+  *(int *)element += 1;
   return 1;
 }
 
-UTEST(cpp, iterate_all) {
+UTEST(c_sse42, iterate_all) {
   struct hashmap_s hashmap;
   int x[27] = {0};
   int total = 0;
@@ -140,16 +131,28 @@ UTEST(cpp, iterate_all) {
   hashmap_destroy(&hashmap);
 }
 
-UTEST(cpp, num_entries) {
+UTEST(c_sse42, num_entries) {
   struct hashmap_s hashmap;
   int x = 42;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
   ASSERT_EQ(0u, hashmap_num_entries(&hashmap));
-  ASSERT_EQ(0, hashmap_put(&hashmap, "foo",
-                           static_cast<unsigned>(strlen("foo")), &x));
+  ASSERT_EQ(0, hashmap_put(&hashmap, "foo", (unsigned)strlen("foo"), &x));
   ASSERT_EQ(1u, hashmap_num_entries(&hashmap));
-  ASSERT_EQ(
-      0, hashmap_remove(&hashmap, "foo", static_cast<unsigned>(strlen("foo"))));
+  ASSERT_EQ(0, hashmap_remove(&hashmap, "foo", (unsigned)strlen("foo")));
   ASSERT_EQ(0u, hashmap_num_entries(&hashmap));
   hashmap_destroy(&hashmap);
 }
+
+extern unsigned crc32_scalar(const char *const s, const unsigned len);
+
+UTEST(c_sse42, crc32_matches) {
+  unsigned index;
+
+  for (index = 0; index <= 0xff; index++) {
+    const char c = (char)index;
+
+    ASSERT_EQ(crc32_scalar(&c, 1), hashmap_crc32_helper(&c, 1));
+  }
+}
+
+#endif
