@@ -60,6 +60,9 @@
 #pragma warning(disable : 4710)
 // Stop MSVC complaining about inlining functions!
 #pragma warning(disable : 4711)
+#elif defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 #endif
 
 #if defined(_MSC_VER)
@@ -474,6 +477,8 @@ int hashmap_rehash_helper(struct hashmap_s *const m) {
 
 #if defined(_MSC_VER)
 #pragma warning(pop)
+#elif defined(__clang__)
+#pragma clang diagnostic pop
 #endif
 
 #endif
