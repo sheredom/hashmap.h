@@ -152,9 +152,10 @@ int log_and_free_all(void *context,
 }
 
 void shut_down() {
-  if (0!=hashmap_iterate_pairs(&hash, log_and_free_all, (void *)logfile)) {
-    fprintf(stderr, "failed to deallocate hashmap\n");
+  if (0!=hashmap_iterate_pairs(&hash, log_and_free_all, (void *)log)) {
+    fprintf(stderr, "failed to deallocate hashmap entries\n");
   }
+  fclose(log);
   hashmap_destroy(&hash);
 }
 ```
