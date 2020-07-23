@@ -67,6 +67,8 @@
 
 #if defined(_MSC_VER)
 #define HASHMAP_UNUSED
+#elif defined(__GNUC__)
+#define HASHMAP_UNUSED __attribute__((used))
 #else
 #define HASHMAP_UNUSED
 #endif

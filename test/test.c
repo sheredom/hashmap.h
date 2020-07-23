@@ -141,8 +141,10 @@ UTEST(c, num_entries) {
 }
 
 static int rem_all(void *context,
-          const char *key, const unsigned val, void *data) {
-  (int *)context++;
+          const char *key, const unsigned key_len, void *const data) {
+  if (strlen(key)!=key_len) return 1;
+  *(int *)data=1;
+  (*(int *)context)++;
   return -1;
 }
 
@@ -152,7 +154,8 @@ UTEST(c, remove_all) {
   int total = 0;
   char s[27];
   char c;
-  ASSERT_EQ(0, hashmap_create(1, &hashmap));
+
+  ASSERT_EQ(0, hashmap_create(16, &hashmap));
 
   for (c = 'a'; c <= 'z'; c++) {
     s[c - 'a'] = c;
@@ -162,10 +165,10 @@ UTEST(c, remove_all) {
     const int index = c - 'a';
     ASSERT_EQ(0, hashmap_put(&hashmap, s + index, 1, x + index));
   }
-  ASSERT_EQ(26, hashmap_num_entries(&hashmap));
+  ASSERT_EQ(26u, hashmap_num_entries(&hashmap));
   ASSERT_EQ(0, hashmap_iterate_pairs(&hashmap,rem_all, &total));
   ASSERT_EQ(26, total);
-  ASSERT_EQ(0, hashmap_num_entries(&hashmap));
+  ASSERT_EQ(0u, hashmap_num_entries(&hashmap));
   hashmap_destroy(&hashmap);
 }
 
