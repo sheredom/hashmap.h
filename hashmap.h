@@ -290,24 +290,25 @@ int hashmap_iterate(const struct hashmap_s *const m,
   unsigned int i;
 
   /* Linear probing */
-  for (i = 0; i < m->table_size; i++)
+  for (i = 0; i < m->table_size; i++) {
     if (m->data[i].in_use) {
       if (!f(context, m->data[i].data)) {
         return 1;
       }
     }
-
+  }
   return 0;
 }
 
 int hashmap_iterate_pairs(struct hashmap_s *const m,
-                    int (*f)(void *const, const char *, unsigned, void *const), void *const context) {
+            int (*f)(void *const, const char *, const unsigned, void *const),
+            void *const context) {
   unsigned int i;
-  hashmap_element_s *p;
+  struct hashmap_element_s *p;
   int r;
 
   /* Linear probing */
-  for (i = 0; i < m->table_size; i++)
+  for (i = 0; i < m->table_size; i++) {
     p=&m->data[i];
     if (p->in_use) {
       r=f(context, p->key, p->key_len, p->data);
@@ -324,7 +325,7 @@ int hashmap_iterate_pairs(struct hashmap_s *const m,
         m->size--;
       }
     }
-
+  }
   return 0;
 }
 

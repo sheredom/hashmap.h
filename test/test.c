@@ -140,6 +140,35 @@ UTEST(c, num_entries) {
   hashmap_destroy(&hashmap);
 }
 
+static int rem_all(void *context,
+          const char *key, const unsigned val, void *data) {
+  (int *)context++;
+  return -1;
+}
+
+UTEST(c, remove_all) {
+  struct hashmap_s hashmap;
+  int x[27] = {0};
+  int total = 0;
+  char s[27];
+  char c;
+  ASSERT_EQ(0, hashmap_create(1, &hashmap));
+
+  for (c = 'a'; c <= 'z'; c++) {
+    s[c - 'a'] = c;
+  }
+
+  for (c = 'a'; c <= 'z'; c++) {
+    const int index = c - 'a';
+    ASSERT_EQ(0, hashmap_put(&hashmap, s + index, 1, x + index));
+  }
+  ASSERT_EQ(26, hashmap_num_entries(&hashmap));
+  ASSERT_EQ(0, hashmap_iterate_pairs(&hashmap,rem_all, &total));
+  ASSERT_EQ(26, total);
+  ASSERT_EQ(0, hashmap_num_entries(&hashmap));
+  hashmap_destroy(&hashmap);
+}
+
 // Define a global function that uses the crc32 helper so we can test it against
 // the SSE 4.2 version.
 unsigned crc32_scalar(const char *const s, const unsigned len);
