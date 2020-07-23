@@ -137,7 +137,7 @@ static int hashmap_remove(struct hashmap_s *const hashmap,
                           const unsigned len) HASHMAP_UNUSED;
 
 /// @brief Iterate over all the elements in a hashmap.
-/// @param hashmap The hashmap to insert into.
+/// @param hashmap The hashmap to iterate over.
 /// @param f The function pointer to call on each element.
 /// @param context The context to pass as the first argument to f.
 /// @return If the entire hashmap was iterated then 0 is returned. Otherwise if
@@ -147,14 +147,14 @@ static int hashmap_iterate(const struct hashmap_s *const hashmap,
                            void *const context) HASHMAP_UNUSED;
 
 /// @brief Iterate over all the heys and elements in a hashmap.
-/// @param hashmap The hashmap to insert into.
+/// @param hashmap The hashmap to iterate over.
 /// @param f The function pointer to call on each element.
 /// @param context The context to pass as the first argument to f.
 /// @return If the entire hashmap was iterated then 0 is returned.
 /// Otherwise if the callback function f returned positive then non-zsero
 /// is returned.  If the callback function returns negative the current item
 /// is removed and iteration continues.
-static int hashmap_iterate_pairs(struct hashmap_s *const m,
+static int hashmap_iterate_pairs(struct hashmap_s *const,
                     int (*f)(void *const, const char *, unsigned, void *const),
                     void *const context) HASHMAP_UNUSED;
 
@@ -302,7 +302,7 @@ int hashmap_iterate(const struct hashmap_s *const m,
   return 0;
 }
 
-int hashmap_iterate_pairs(struct hashmap_s *const m,
+int hashmap_iterate_pairs(struct hashmap_s *const hashmap,
             int (*f)(void *const, const char *, const unsigned, void *const),
             void *const context) {
   unsigned int i;
@@ -310,8 +310,8 @@ int hashmap_iterate_pairs(struct hashmap_s *const m,
   int r;
 
   /* Linear probing */
-  for (i = 0; i < m->table_size; i++) {
-    p=&m->data[i];
+  for (i = 0; i < hashmap->table_size; i++) {
+    p=&hashmap->data[i];
     if (p->in_use) {
       r=f(context, p->key, p->key_len, p->data);
       if (0<r) {
@@ -324,7 +324,7 @@ int hashmap_iterate_pairs(struct hashmap_s *const m,
         p->key = HASHMAP_NULL;
 
         /* Reduce the size */
-        m->size--;
+        hashmap->size--;
       }
     }
   }
