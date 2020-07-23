@@ -183,7 +183,7 @@ hashmap_destroy(&hashmap);
 This code was almost entirely written by the awesome
 [Pete Warden](https://twitter.com/petewarden), based on a now defunct
 [blog post](https://web.archive.org/web/20160329102146/http://elliottback.com/wp/hashmap-implementation-in-c/)
-by Elliott Back. The author has applied the following further changes:
+by Elliott Back. The authors have applied the following further changes:
 
 - Merged the .c / .h to create a single header (meaning easier integrations with
   external projects).
@@ -192,6 +192,7 @@ by Elliott Back. The author has applied the following further changes:
 - Changed the API to take string slices (pointer & length) instead of null
   terminated strings.
 - Did a pass to clean up the comments and function signatures.
+- Added second iterator, tests and documentation by Samuel D. Crow
 
 ## License
 
