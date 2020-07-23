@@ -144,6 +144,18 @@ static int hashmap_iterate(const struct hashmap_s *const hashmap,
                            int (*f)(void *const context, void *const value),
                            void *const context) HASHMAP_UNUSED;
 
+/// @brief Iterate over all the heys and elements in a hashmap.
+/// @param hashmap The hashmap to insert into.
+/// @param f The function pointer to call on each element.
+/// @param context The context to pass as the first argument to f.
+/// @return If the entire hashmap was iterated then 0 is returned.
+/// Otherwise if the callback function f returned positive then non-zsero
+/// is returned.  If the callback function returns negative the current item
+/// is removed and iteration continues.
+static int hashmap_iterate_pairs(struct hashmap_s *const m,
+                    int (*f)(void *const, const char *, unsigned, void *const),
+                    void *const context) HASHMAP_UNUSED;
+
 /// @brief Get the size of the hashmap.
 /// @param hashmap The hashmap to get the size of.
 /// @return The size of the hashmap.
@@ -282,6 +294,34 @@ int hashmap_iterate(const struct hashmap_s *const m,
     if (m->data[i].in_use) {
       if (!f(context, m->data[i].data)) {
         return 1;
+      }
+    }
+
+  return 0;
+}
+
+int hashmap_iterate_pairs(struct hashmap_s *const m,
+                    int (*f)(void *const, const char *, unsigned, void *const), void *const context) {
+  unsigned int i;
+  hashmap_element_s *p;
+  int r;
+
+  /* Linear probing */
+  for (i = 0; i < m->table_size; i++)
+    p=&m->data[i];
+    if (p->in_use) {
+      r=f(context, p->key, p->key_len, p->data);
+      if (0<r) {
+        /* early return */
+        return 1;
+      }else if (0>r) {
+        /* Blank out the fields */
+        p->in_use = 0;
+        p->data = HASHMAP_NULL;
+        p->key = HASHMAP_NULL;
+
+        /* Reduce the size */
+        m->size--;
       }
     }
 
