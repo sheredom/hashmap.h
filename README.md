@@ -128,6 +128,37 @@ from the hashmap or search for a specific value only. Otherwise if zero is
 returned from your callback then the iteration will encompass the entire
 hashmap.
 
+### Alternate Iterator for Key Value Pairs
+
+In some applications, such as needing to print out the contents of a hashmap,
+you need to have access to the key and key length in addition to the value.
+For that purpose a second iterator has been added called
+`hashmap_iterate_pairs`.
+
+Also, returning a -1 from the callback function allows automatic removal of the
+current item.  This is especially handy when storing dynamically allocated
+objects to the map and needing to free the memory when destroying the map.
+
+```c
+int log_and_free_all(void *context, 
+  const char *key, const unsigned key_length, void *value) {
+  int counter;
+  for (counter=0; counter < key_length; counter++) {
+    fputc(key[counter], (FILE)context);
+  }
+  fprintf((FILE)context,"=%s pair has been freed\n", (char *)value);
+  free(value);
+  return -1;
+}
+
+void shut_down() {
+  if (0!=hashmap_iterate_pairs(&hash, log_and_free_all, (void *)logfile)) {
+    fprintf(stderr, "failed to deallocate hashmap\n");
+  }
+  hashmap_destroy(&hash);
+}
+```
+
 ### Get the Number of Entries in a Hashmap
 
 To get the number of entries that have been put into a hashmap use the
