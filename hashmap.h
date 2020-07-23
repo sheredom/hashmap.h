@@ -154,7 +154,7 @@ static int hashmap_iterate(const struct hashmap_s *const hashmap,
 /// Otherwise if the callback function f returned positive then non-zsero
 /// is returned.  If the callback function returns negative the current item
 /// is removed and iteration continues.
-static int hashmap_iterate_pairs(struct hashmap_s *const,
+static int hashmap_iterate_pairs(struct hashmap_s *const hashmap,
                     int (*f)(void *const, const char *, unsigned, void *const),
                     void *const context) HASHMAP_UNUSED;
 
