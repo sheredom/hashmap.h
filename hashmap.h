@@ -180,6 +180,9 @@ static int hashmap_match_helper(const struct hashmap_element_s *const element,
 static int hashmap_hash_helper(const struct hashmap_s *const m,
                                const char *const key, const unsigned len,
                                unsigned *const out_index) HASHMAP_UNUSED;
+static int hashmap_rehash_iterator(void *const new_hash, 
+                              const char *key, unsigned const key_length,
+                              void *const data) HASHMAP_UNUSED;
 static int hashmap_rehash_helper(struct hashmap_s *const m) HASHMAP_UNUSED;
 
 #if defined(__cplusplus)
@@ -303,7 +306,7 @@ int hashmap_iterate(const struct hashmap_s *const m,
 }
 
 int hashmap_iterate_pairs(struct hashmap_s *const hashmap,
-            int (*f)(void *const, const char *, const unsigned, void *const),
+            int (*f)(void *const, char const*, const unsigned, void *const),
             void *const context) {
   unsigned int i;
   struct hashmap_element_s *p;
@@ -473,47 +476,39 @@ int hashmap_hash_helper(const struct hashmap_s *const m, const char *const key,
   return 0;
 }
 
+int hashmap_rehash_iterator(void *const new_hash,
+  const char *key, unsigned const key_length, void *const data) {
+  int temp=hashmap_put(HASHMAP_PTR_CAST (struct hashmap_s *, new_hash),
+    key, key_length, data);
+  if (0<temp) {
+    return temp;
+  }
+  /* clear old value to avoid stale pointers */
+  return -1;
+}
 /*
  * Doubles the size of the hashmap, and rehashes all the elements
  */
 int hashmap_rehash_helper(struct hashmap_s *const m) {
-  unsigned int i;
-  unsigned int old_size;
-  struct hashmap_element_s *curr;
   // The minimum new size should always be non-zero.
   unsigned new_size = (0 == m->table_size) ? 1 : 2 * m->table_size;
 
-  /* Setup the new elements */
-  struct hashmap_element_s *const temp =
-      HASHMAP_PTR_CAST(struct hashmap_element_s *,
-                       calloc(new_size, sizeof(struct hashmap_element_s)));
-  if (!temp) {
-    return 1;
+  struct hashmap_s new_hash;
+
+  int flag = hashmap_create(new_size, &new_hash);
+  if (0!=flag) {
+    return flag;
   }
 
-  /* Update the array */
-  curr = m->data;
-  m->data = temp;
-
-  /* Update the size */
-  old_size = m->table_size;
-  m->table_size = new_size;
-  m->size = 0;
-
-  /* Rehash the elements */
-  for (i = 0; i < old_size; i++) {
-    int status;
-
-    if (curr[i].in_use == 0)
-      continue;
-
-    status = hashmap_put(m, curr[i].key, curr[i].key_len, curr[i].data);
-    if (status != 0) {
-      return status;
-    }
+  /* copy the old elements to the new table */
+  flag = hashmap_iterate_pairs(m, hashmap_rehash_iterator, HASHMAP_PTR_CAST(void *, &new_hash));
+  if (0!=flag) {
+    return flag;
   }
 
-  free(curr);
+  hashmap_destroy(m);
+  /* put new hash into old hash structure by copying */
+  memcpy(m, &new_hash, sizeof(struct hashmap_s));
 
   return 0;
 }
