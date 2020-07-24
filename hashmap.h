@@ -472,7 +472,8 @@ int hashmap_hash_helper(const struct hashmap_s *const m, const char *const key,
   return 0;
 }
 
-int hashmap_rehash_iterator(void *const new_hash, struct hashmap_element_s *e) {
+int hashmap_rehash_iterator(void *const new_hash,
+  struct hashmap_element_s *const e) {
   int temp=hashmap_put(HASHMAP_PTR_CAST(struct hashmap_s *, new_hash),
     e->key, e->key_len, e->data);
   if (0<temp) {
