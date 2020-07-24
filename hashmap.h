@@ -141,21 +141,21 @@ static int hashmap_remove(struct hashmap_s *const hashmap,
 /// @param f The function pointer to call on each element.
 /// @param context The context to pass as the first argument to f.
 /// @return If the entire hashmap was iterated then 0 is returned. Otherwise if
-/// the callback function f returned non-zero then non-zsero is returned.
+/// the callback function f returned non-zero then non-zero is returned.
 static int hashmap_iterate(const struct hashmap_s *const hashmap,
                            int (*f)(void *const context, void *const value),
                            void *const context) HASHMAP_UNUSED;
 
-/// @brief Iterate over all the heys and elements in a hashmap.
+/// @brief Iterate over all the elements in a hashmap.
 /// @param hashmap The hashmap to iterate over.
 /// @param f The function pointer to call on each element.
 /// @param context The context to pass as the first argument to f.
 /// @return If the entire hashmap was iterated then 0 is returned.
-/// Otherwise if the callback function f returned positive then non-zsero
-/// is returned.  If the callback function returns negative the current item
+/// Otherwise if the callback function f returned positive then the positive 
+/// value is returned.  If the callback function returns -1, the current item
 /// is removed and iteration continues.
 static int hashmap_iterate_pairs(struct hashmap_s *const hashmap,
-                    int (*f)(void *const, const char *, unsigned, void *const),
+                    int (*f)(void *const, struct hashmap_element_s *const),
                     void *const context) HASHMAP_UNUSED;
 
 /// @brief Get the size of the hashmap.
@@ -181,8 +181,7 @@ static int hashmap_hash_helper(const struct hashmap_s *const m,
                                const char *const key, const unsigned len,
                                unsigned *const out_index) HASHMAP_UNUSED;
 static int hashmap_rehash_iterator(void *const new_hash, 
-                              const char *key, unsigned const key_length,
-                              void *const data) HASHMAP_UNUSED;
+                              struct hashmap_element_s *const e) HASHMAP_UNUSED;
 static int hashmap_rehash_helper(struct hashmap_s *const m) HASHMAP_UNUSED;
 
 #if defined(__cplusplus)
@@ -274,10 +273,8 @@ int hashmap_remove(struct hashmap_s *const m, const char *const key,
   for (i = 0; i < HASHMAP_MAX_CHAIN_LENGTH; i++) {
     if (m->data[curr].in_use) {
       if (hashmap_match_helper(&m->data[curr], key, len)) {
-        /* Blank out the fields */
-        m->data[curr].in_use = 0;
-        m->data[curr].data = HASHMAP_NULL;
-        m->data[curr].key = HASHMAP_NULL;
+        /* Blank out the fields including in_use */
+        memset(&m->data[curr], 0, sizeof(struct hashmap_element_s));
 
         /* Reduce the size */
         m->size--;
@@ -306,7 +303,7 @@ int hashmap_iterate(const struct hashmap_s *const m,
 }
 
 int hashmap_iterate_pairs(struct hashmap_s *const hashmap,
-            int (*f)(void *const, char const*, const unsigned, void *const),
+            int (*f)(void *const, struct hashmap_element_s *const),
             void *const context) {
   unsigned int i;
   struct hashmap_element_s *p;
@@ -316,18 +313,17 @@ int hashmap_iterate_pairs(struct hashmap_s *const hashmap,
   for (i = 0; i < hashmap->table_size; i++) {
     p=&hashmap->data[i];
     if (p->in_use) {
-      r=f(context, p->key, p->key_len, p->data);
-      if (0<r) {
-        /* early return */
-        return 1;
-      }else if (0>r) {
-        /* Blank out the fields */
-        p->in_use = 0;
-        p->data = HASHMAP_NULL;
-        p->key = HASHMAP_NULL;
-
-        /* Reduce the size */
-        hashmap->size--;
+      r=f(context, p);
+      switch (r)
+      {
+        case -1: /* remove item */
+          memset(p, 0, sizeof(struct hashmap_element_s));
+          hashmap->size--;
+          break;
+        case 0: /* continue iterating */
+          break;
+        default: /* early exit */
+          return 1;
       }
     }
   }
@@ -476,12 +472,11 @@ int hashmap_hash_helper(const struct hashmap_s *const m, const char *const key,
   return 0;
 }
 
-int hashmap_rehash_iterator(void *const new_hash,
-  const char *key, unsigned const key_length, void *const data) {
-  int temp=hashmap_put(HASHMAP_PTR_CAST (struct hashmap_s *, new_hash),
-    key, key_length, data);
+int hashmap_rehash_iterator(void *const new_hash, struct hashmap_element_s *e) {
+  int temp=hashmap_put(HASHMAP_PTR_CAST(struct hashmap_s *, new_hash),
+    e->key, e->key_len, e->data);
   if (0<temp) {
-    return temp;
+    return 1;
   }
   /* clear old value to avoid stale pointers */
   return -1;

@@ -140,10 +140,8 @@ UTEST(c, num_entries) {
   hashmap_destroy(&hashmap);
 }
 
-static int rem_all(void *context,
-          const char *key, const unsigned key_len, void *const data) {
-  *(int *)data=(int)*key;
-  (*(int *)context)+=key_len;
+static int rem_all(void *context, struct hashmap_element_s *e) {
+  (*(int *)context)+=e->key_len;
   return -1;
 }
 
