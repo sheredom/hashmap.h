@@ -192,7 +192,7 @@ by Elliott Back. The authors have applied the following further changes:
 - Changed the API to take string slices (pointer & length) instead of null
   terminated strings.
 - Did a pass to clean up the comments and function signatures.
-- Added second iterator, tests and documentation by Samuel D. Crow
+- Added second iterator, tests and documentation.  (Samuel D. Crow)
 
 ## License
 

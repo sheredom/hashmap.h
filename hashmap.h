@@ -66,11 +66,11 @@
 #endif
 
 #if defined(_MSC_VER)
-#define HASHMAP_UNUSED
+#define HASHMAP_USED
 #elif defined(__GNUC__)
-#define HASHMAP_UNUSED __attribute__((used))
+#define HASHMAP_USED __attribute__((used))
 #else
-#define HASHMAP_UNUSED
+#define HASHMAP_USED
 #endif
 
 /* We need to keep keys and values. */
@@ -103,7 +103,7 @@ extern "C" {
 /// Note that the initial size of the hashmap must be a power of two, and
 /// creation of the hashmap will fail if this is not the case.
 static int hashmap_create(const unsigned initial_size,
-                          struct hashmap_s *const out_hashmap) HASHMAP_UNUSED;
+                          struct hashmap_s *const out_hashmap) HASHMAP_USED;
 
 /// @brief Put an element into the hashmap.
 /// @param hashmap The hashmap to insert into.
@@ -116,7 +116,7 @@ static int hashmap_create(const unsigned initial_size,
 /// must remain a valid pointer until the hashmap entry is removed or the
 /// hashmap is destroyed.
 static int hashmap_put(struct hashmap_s *const hashmap, const char *const key,
-                       const unsigned len, void *const value) HASHMAP_UNUSED;
+                       const unsigned len, void *const value) HASHMAP_USED;
 
 /// @brief Get an element from the hashmap.
 /// @param hashmap The hashmap to get from.
@@ -125,7 +125,7 @@ static int hashmap_put(struct hashmap_s *const hashmap, const char *const key,
 /// @return The previously set element, or NULL if none exists.
 static void *hashmap_get(const struct hashmap_s *const hashmap,
                          const char *const key,
-                         const unsigned len) HASHMAP_UNUSED;
+                         const unsigned len) HASHMAP_USED;
 
 /// @brief Remove an element from the hashmap.
 /// @param hashmap The hashmap to remove from.
@@ -134,7 +134,7 @@ static void *hashmap_get(const struct hashmap_s *const hashmap,
 /// @return On success 0 is returned.
 static int hashmap_remove(struct hashmap_s *const hashmap,
                           const char *const key,
-                          const unsigned len) HASHMAP_UNUSED;
+                          const unsigned len) HASHMAP_USED;
 
 /// @brief Iterate over all the elements in a hashmap.
 /// @param hashmap The hashmap to iterate over.
@@ -144,7 +144,7 @@ static int hashmap_remove(struct hashmap_s *const hashmap,
 /// the callback function f returned non-zero then non-zero is returned.
 static int hashmap_iterate(const struct hashmap_s *const hashmap,
                            int (*f)(void *const context, void *const value),
-                           void *const context) HASHMAP_UNUSED;
+                           void *const context) HASHMAP_USED;
 
 /// @brief Iterate over all the elements in a hashmap.
 /// @param hashmap The hashmap to iterate over.
@@ -156,33 +156,33 @@ static int hashmap_iterate(const struct hashmap_s *const hashmap,
 /// is removed and iteration continues.
 static int hashmap_iterate_pairs(struct hashmap_s *const hashmap,
                     int (*f)(void *const, struct hashmap_element_s *const),
-                    void *const context) HASHMAP_UNUSED;
+                    void *const context) HASHMAP_USED;
 
 /// @brief Get the size of the hashmap.
 /// @param hashmap The hashmap to get the size of.
 /// @return The size of the hashmap.
 static unsigned
-hashmap_num_entries(const struct hashmap_s *const hashmap) HASHMAP_UNUSED;
+hashmap_num_entries(const struct hashmap_s *const hashmap) HASHMAP_USED;
 
 /// @brief Destroy the hashmap.
 /// @param hashmap The hashmap to destroy.
-static void hashmap_destroy(struct hashmap_s *const hashmap) HASHMAP_UNUSED;
+static void hashmap_destroy(struct hashmap_s *const hashmap) HASHMAP_USED;
 
 static unsigned hashmap_crc32_helper(const char *const s,
-                                     const unsigned len) HASHMAP_UNUSED;
+                                     const unsigned len) HASHMAP_USED;
 static unsigned
 hashmap_hash_helper_int_helper(const struct hashmap_s *const m,
                                const char *const keystring,
-                               const unsigned len) HASHMAP_UNUSED;
+                               const unsigned len) HASHMAP_USED;
 static int hashmap_match_helper(const struct hashmap_element_s *const element,
                                 const char *const key,
-                                const unsigned len) HASHMAP_UNUSED;
+                                const unsigned len) HASHMAP_USED;
 static int hashmap_hash_helper(const struct hashmap_s *const m,
                                const char *const key, const unsigned len,
-                               unsigned *const out_index) HASHMAP_UNUSED;
+                               unsigned *const out_index) HASHMAP_USED;
 static int hashmap_rehash_iterator(void *const new_hash, 
-                              struct hashmap_element_s *const e) HASHMAP_UNUSED;
-static int hashmap_rehash_helper(struct hashmap_s *const m) HASHMAP_UNUSED;
+                              struct hashmap_element_s *const e) HASHMAP_USED;
+static int hashmap_rehash_helper(struct hashmap_s *const m) HASHMAP_USED;
 
 #if defined(__cplusplus)
 }
