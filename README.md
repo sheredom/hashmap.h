@@ -128,6 +128,37 @@ from the hashmap or search for a specific value only. Otherwise if zero is
 returned from your callback then the iteration will encompass the entire
 hashmap.
 
+### Alternate Iterator for Key Value Pairs
+
+In some applications, such as needing to print out the contents of a hashmap,
+you need to have access to the key and key length in addition to the value.
+For that purpose a second iterator has been added called
+`hashmap_iterate_pairs`.
+
+Also, returning a -1 from the callback function allows automatic removal of the
+current item.  This is especially handy when storing dynamically allocated
+objects to the map and needing to free the memory when destroying the map.
+
+```c
+int log_and_free_all(void *context, struct hashmap_element_s const *e) {
+  int counter;
+  for (counter=0; counter < e->key_len; counter++) {
+    fputc(e->key[counter], (FILE)context);
+  }
+  fprintf((FILE)context,"=%s pair has been freed\n", (char *)e->data);
+  free(e->data);
+  return -1;
+}
+
+void shut_down() {
+  if (0!=hashmap_iterate_pairs(&hash, log_and_free_all, (void *)log)) {
+    fprintf(stderr, "failed to deallocate hashmap entries\n");
+  }
+  fclose(log);
+  hashmap_destroy(&hash);
+}
+```
+
 ### Get the Number of Entries in a Hashmap
 
 To get the number of entries that have been put into a hashmap use the
@@ -151,7 +182,7 @@ hashmap_destroy(&hashmap);
 This code was almost entirely written by the awesome
 [Pete Warden](https://twitter.com/petewarden), based on a now defunct
 [blog post](https://web.archive.org/web/20160329102146/http://elliottback.com/wp/hashmap-implementation-in-c/)
-by Elliott Back. The author has applied the following further changes:
+by Elliott Back. The authors have applied the following further changes:
 
 - Merged the .c / .h to create a single header (meaning easier integrations with
   external projects).
@@ -160,6 +191,7 @@ by Elliott Back. The author has applied the following further changes:
 - Changed the API to take string slices (pointer & length) instead of null
   terminated strings.
 - Did a pass to clean up the comments and function signatures.
+- Added second iterator, tests and documentation.  (Samuel D. Crow)
 
 ## License
 

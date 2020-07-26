@@ -32,3 +32,5 @@ add_executable(hashmap_bench
   ../hashmap.h
   main.c
 )
+
+target_link_libraries(hashmap_bench m)
