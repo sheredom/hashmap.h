@@ -9,6 +9,11 @@ UTEST(c_sse42, create) {
   hashmap_destroy(&hashmap);
 }
 
+UTEST(c_sse42, create_zero) {
+  struct hashmap_s hashmap;
+  ASSERT_EQ(1, hashmap_create(0, &hashmap))
+}
+
 UTEST(c_sse42, create_not_power_of_two) {
   struct hashmap_s hashmap;
   ASSERT_EQ(1, hashmap_create(3, &hashmap))
@@ -23,7 +28,7 @@ UTEST(c_sse42, put) {
   struct hashmap_s hashmap;
   int x = 42;
   int y = 13;
-  ASSERT_EQ(0, hashmap_create(0, &hashmap))
+  ASSERT_EQ(0, hashmap_create(1, &hashmap))
   ASSERT_EQ(0, hashmap_put(&hashmap, "foo", (unsigned)strlen("foo"), &x))
   ASSERT_EQ(0, hashmap_put(&hashmap, "bar", (unsigned)strlen("bar"), &x))
   ASSERT_EQ(0, hashmap_iterate(&hashmap, set_context, &y))
