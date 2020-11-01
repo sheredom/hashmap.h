@@ -7,6 +7,11 @@ UTEST(c, create) {
   hashmap_destroy(&hashmap);
 }
 
+UTEST(c, create_zero) {
+  struct hashmap_s hashmap;
+  ASSERT_EQ(1, hashmap_create(0, &hashmap))
+}
+
 UTEST(c, create_not_power_of_two) {
   struct hashmap_s hashmap;
   ASSERT_EQ(1, hashmap_create(3, &hashmap))

@@ -200,7 +200,7 @@ static int hashmap_rehash_helper(struct hashmap_s *const m) HASHMAP_USED;
 
 int hashmap_create(const unsigned initial_size,
                    struct hashmap_s *const out_hashmap) {
-  if (0 != (initial_size & (initial_size - 1))) {
+  if (0 == initial_size || 0 != (initial_size & (initial_size - 1))) {
     return 1;
   }
 
@@ -486,8 +486,8 @@ int hashmap_rehash_iterator(void *const new_hash,
  * Doubles the size of the hashmap, and rehashes all the elements
  */
 int hashmap_rehash_helper(struct hashmap_s *const m) {
-  // The minimum new size should always be non-zero.
-  unsigned new_size = (0 == m->table_size) ? 1 : 2 * m->table_size;
+  /* If this multiplication overflows hashmap_create will fail. */
+  unsigned new_size = 2 * m->table_size;
 
   struct hashmap_s new_hash;
 

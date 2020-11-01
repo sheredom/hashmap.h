@@ -13,6 +13,11 @@ UTEST(cpp, create) {
   hashmap_destroy(&hashmap);
 }
 
+UTEST(cpp, create_zero) {
+  struct hashmap_s hashmap;
+  ASSERT_EQ(1, hashmap_create(0, &hashmap))
+}
+
 UTEST(cpp, create_not_power_of_two) {
   struct hashmap_s hashmap;
   ASSERT_EQ(1, hashmap_create(3, &hashmap))
