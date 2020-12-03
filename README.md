@@ -140,7 +140,7 @@ current item.  This is especially handy when storing dynamically allocated
 objects to the map and needing to free the memory when destroying the map.
 
 ```c
-int log_and_free_all(void *context, struct hashmap_element_s const *e) {
+int log_and_free_all(void* const context, struct hashmap_element_s* const e) {
   int counter;
   for (counter=0; counter < e->key_len; counter++) {
     fputc(e->key[counter], (FILE)context);
