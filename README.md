@@ -102,7 +102,7 @@ static int iterate(void* const context, void* const value) {
   // If the value is 42...
   if (42 == *(int*)value) {
     // Store into our user-provided context the value.
-    *(void**) = value;
+    *(void**) context = value;
 
     // Return 0 to tell the iteration to stop here.
     return 0;
