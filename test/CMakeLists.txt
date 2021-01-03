@@ -76,20 +76,22 @@ else()
   message(WARNING "Unknown compiler '${CMAKE_C_COMPILER_ID}'!")
 endif()
 
-if("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
-  set_source_files_properties(test_sse42.c PROPERTIES
-    COMPILE_FLAGS "-Wall -Wextra -Werror -std=gnu89 -msse4.2"
-  )
-elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
-  set_source_files_properties(test_sse42.c PROPERTIES
-    COMPILE_FLAGS "-Wall -Wextra -Weverything -Werror -std=gnu89 -msse4.2"
-  )
-elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
-  set_source_files_properties(test_sse42.c PROPERTIES
-    COMPILE_FLAGS "/Wall /WX /wd4514 /wd5045 /arch:AVX"
-  )
-else()
-  message(WARNING "Unknown compiler '${CMAKE_C_COMPILER_ID}'!")
+if (NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
+  if("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
+    set_source_files_properties(test_sse42.c PROPERTIES
+      COMPILE_FLAGS "-Wall -Wextra -Werror -std=gnu89 -msse4.2"
+    )
+  elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
+    set_source_files_properties(test_sse42.c PROPERTIES
+      COMPILE_FLAGS "-Wall -Wextra -Weverything -Werror -std=gnu89 -msse4.2"
+    )
+  elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
+    set_source_files_properties(test_sse42.c PROPERTIES
+      COMPILE_FLAGS "/Wall /WX /wd4514 /wd5045 /arch:AVX"
+    )
+  else()
+    message(WARNING "Unknown compiler '${CMAKE_C_COMPILER_ID}'!")
+  endif()
 endif()
 
 add_executable(hashmap_test

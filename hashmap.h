@@ -232,8 +232,13 @@ int hashmap_put(struct hashmap_s *const m, const char *const key,
   m->data[index].data = value;
   m->data[index].key = key;
   m->data[index].key_len = len;
-  m->data[index].in_use = 1;
-  m->size++;
+
+  /* If the hashmap element was not already in use, set that it is being used
+   * and bump our size. */
+  if (0 == m->data[index].in_use) {
+    m->data[index].in_use = 1;
+    m->size++;
+  }
 
   return 0;
 }

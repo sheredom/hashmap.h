@@ -33,6 +33,17 @@ UTEST(c, put) {
   hashmap_destroy(&hashmap);
 }
 
+UTEST(c, put_twice) {
+  struct hashmap_s hashmap;
+  int x = 42;
+  int y = 13;
+  ASSERT_EQ(0, hashmap_create(1, &hashmap))
+  ASSERT_EQ(0, hashmap_put(&hashmap, "foo", (unsigned)strlen("foo"), &x))
+  ASSERT_EQ(0, hashmap_put(&hashmap, "foo", (unsigned)strlen("foo"), &y))
+  ASSERT_EQ(hashmap_num_entries(&hashmap), 1u)
+  hashmap_destroy(&hashmap);
+}
+
 UTEST(c, get_exists) {
   struct hashmap_s hashmap;
   int x = 42;
