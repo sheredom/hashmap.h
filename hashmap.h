@@ -56,9 +56,11 @@
 
 #if defined(_MSC_VER)
 #pragma warning(push)
-// Stop MSVC complaining about not inlining functions.
+/* Stop MSVC complaining about unreferenced functions */
+#pragma warning(disable : 4505)
+/* Stop MSVC complaining about not inlining functions */
 #pragma warning(disable : 4710)
-// Stop MSVC complaining about inlining functions!
+/* Stop MSVC complaining about inlining functions! */
 #pragma warning(disable : 4711)
 #elif defined(__clang__)
 #pragma clang diagnostic push
@@ -135,6 +137,16 @@ static void *hashmap_get(const struct hashmap_s *const hashmap,
 static int hashmap_remove(struct hashmap_s *const hashmap,
                           const char *const key,
                           const unsigned len) HASHMAP_USED;
+
+/// @brief Remove an element from the hashmap.
+/// @param hashmap The hashmap to remove from.
+/// @param key The string key to use.
+/// @param len The length of the string key.
+/// @return On success the original stored key pointer is returned, on failure
+/// NULL is returned.
+static const char *
+hashmap_remove_and_return_key(struct hashmap_s *const hashmap,
+                              const char *const key, const unsigned len) HASHMAP_USED;
 
 /// @brief Iterate over all the elements in a hashmap.
 /// @param hashmap The hashmap to iterate over.
@@ -283,6 +295,7 @@ int hashmap_remove(struct hashmap_s *const m, const char *const key,
 
         /* Reduce the size */
         m->size--;
+
         return 0;
       }
     }
@@ -291,6 +304,38 @@ int hashmap_remove(struct hashmap_s *const m, const char *const key,
   }
 
   return 1;
+}
+
+const char *hashmap_remove_and_return_key(struct hashmap_s *const m,
+                                          const char *const key,
+                                          const unsigned len) {
+  unsigned int i;
+  unsigned int curr;
+
+  /* Find key */
+  curr = hashmap_hash_helper_int_helper(m, key, len);
+
+  /* Linear probing, if necessary */
+  for (i = 0; i < HASHMAP_MAX_CHAIN_LENGTH; i++) {
+    if (m->data[curr].in_use) {
+      if (hashmap_match_helper(&m->data[curr], key, len)) {
+        const char *const stored_key = m->data[curr].key;
+
+        /* Blank out the fields */
+        m->data[curr].in_use = 0;
+        m->data[curr].data = HASHMAP_NULL;
+        m->data[curr].key = HASHMAP_NULL;
+
+        /* Reduce the size */
+        m->size--;
+
+        return stored_key;
+      }
+    }
+    curr = (curr + 1) % m->table_size;
+  }
+
+  return HASHMAP_NULL;
 }
 
 int hashmap_iterate(const struct hashmap_s *const m,
