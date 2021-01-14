@@ -69,6 +69,23 @@ UTEST(c, remove) {
   hashmap_destroy(&hashmap);
 }
 
+UTEST(c, remove_and_return_key) {
+  /* The '&bar' portion of the string just uniques the constant from the 'foo'
+   * used later. */
+  const char *const key = "foo&bar";
+
+  struct hashmap_s hashmap;
+  int x = 42;
+  ASSERT_EQ(0, hashmap_create(1, &hashmap));
+  ASSERT_EQ(0, hashmap_put(&hashmap, key, 3, &x));
+
+  /* Use a new string here so that we definitely have a different pointer key
+   * being provided. */
+  ASSERT_EQ(key, hashmap_remove_and_return_key(&hashmap, "foo",
+                                               (unsigned)strlen("foo")));
+  hashmap_destroy(&hashmap);
+}
+
 static int early_exit(void *const context, void *const element) {
   *(int *)context += 1;
   *(int *)element += 1;
