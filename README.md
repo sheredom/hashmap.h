@@ -1,7 +1,7 @@
 # #️⃣ hashmap.h
 
+[![Actions Status](https://github.com/sheredom/hashmap.h/workflows/CMake/badge.svg)](https://github.com/sheredom/hashmap.h/actions)
 [![Build status](https://ci.appveyor.com/api/projects/status/1crw9uccf869aiss?svg=true)](https://ci.appveyor.com/project/sheredom/hashmap-h)
-[![Build Status](https://travis-ci.com/sheredom/hashmap.h.svg?branch=master)](https://travis-ci.com/sheredom/hashmap.h)
 
 A simple one header hashmap implementation for C/C++.
 
