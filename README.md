@@ -2,6 +2,7 @@
 
 [![Actions Status](https://github.com/sheredom/hashmap.h/workflows/CMake/badge.svg)](https://github.com/sheredom/hashmap.h/actions)
 [![Build status](https://ci.appveyor.com/api/projects/status/1crw9uccf869aiss?svg=true)](https://ci.appveyor.com/project/sheredom/hashmap-h)
+[![Sponsor](https://img.shields.io/badge/💜-sponsor-blueviolet)](https://github.com/sponsors/sheredom)
 
 A simple one header hashmap implementation for C/C++.
 
