@@ -286,6 +286,7 @@ int hashmap_remove(struct hashmap_s *const m, const char *const key,
         return 0;
       }
     }
+
     curr = (curr + 1) % m->table_size;
   }
 
@@ -449,6 +450,7 @@ int hashmap_hash_helper(const struct hashmap_s *const m, const char *const key,
                         const unsigned len, unsigned *const out_index) {
   unsigned int curr;
   unsigned int i;
+  int total_in_use;
 
   /* If full, return immediately */
   if (m->size >= m->table_size) {
@@ -458,20 +460,33 @@ int hashmap_hash_helper(const struct hashmap_s *const m, const char *const key,
   /* Find the best index */
   curr = hashmap_hash_helper_int_helper(m, key, len);
 
-  /* Linear probing */
-  for (i = 0; i < HASHMAP_MAX_CHAIN_LENGTH; i++) {
-    if (!m->data[curr].in_use) {
-      *out_index = curr;
-      return 1;
-    }
+  /* First linear probe to check if we've already insert the element */
+  total_in_use = 0;
 
-    if (m->data[curr].in_use &&
-        hashmap_match_helper(&m->data[curr], key, len)) {
+  for (i = 0; i < HASHMAP_MAX_CHAIN_LENGTH; i++) {
+    const int in_use = m->data[curr].in_use;
+
+    total_in_use += in_use;
+
+    if (in_use && hashmap_match_helper(&m->data[curr], key, len)) {
       *out_index = curr;
       return 1;
     }
 
     curr = (curr + 1) % m->table_size;
+  }
+
+  /* Second linear probe to actually insert our element (only if there was at
+   * least one empty entry) */
+  if (HASHMAP_MAX_CHAIN_LENGTH > total_in_use) {
+    for (i = 0; i < HASHMAP_MAX_CHAIN_LENGTH; i++) {
+      if (!m->data[curr].in_use) {
+        *out_index = curr;
+        return 1;
+      }
+
+      curr = (curr + 1) % m->table_size;
+    }
   }
 
   return 0;
