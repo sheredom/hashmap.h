@@ -24,7 +24,7 @@
 # For more information, please refer to <http://unlicense.org/>
 
 project(hashmap)
-cmake_minimum_required(VERSION 3.1.3)
+cmake_minimum_required(VERSION 3.15)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../)
 
@@ -33,9 +33,15 @@ if("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
     COMPILE_FLAGS "-Wall -Wextra -Werror -std=gnu89"
   )
 elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
-  set_source_files_properties(main.c test.c PROPERTIES
-    COMPILE_FLAGS "-Wall -Wextra -Weverything -Werror -std=gnu89"
-  )
+  if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    set_source_files_properties(main.c test.c PROPERTIES
+      COMPILE_FLAGS "/Wall /WX /wd4514 /wd5045"
+    )
+  else()
+    set_source_files_properties(main.c test.c PROPERTIES
+      COMPILE_FLAGS "-Wall -Wextra -Weverything -Werror -std=gnu89"
+    )
+  endif()
 elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
   set_source_files_properties(main.c test.c PROPERTIES
     COMPILE_FLAGS "/Wall /WX /wd4514 /wd5045"
@@ -49,9 +55,15 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     COMPILE_FLAGS "-Wall -Wextra -Werror -std=gnu++98"
   )
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  set_source_files_properties(test.cpp PROPERTIES
-    COMPILE_FLAGS "-Wall -Wextra -Weverything -Werror -std=gnu++98"
-  )
+  if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    set_source_files_properties(test.cpp PROPERTIES
+      COMPILE_FLAGS "/Wall /WX /wd4514 /wd5045"
+    )
+  else()
+    set_source_files_properties(test.cpp PROPERTIES
+      COMPILE_FLAGS "-Wall -Wextra -Weverything -Werror -std=gnu++98"
+    )
+  endif()
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set_source_files_properties(test.cpp PROPERTIES
     COMPILE_FLAGS "/Wall /WX /wd4514 /wd5045"
@@ -65,9 +77,15 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     COMPILE_FLAGS "-Wall -Wextra -Werror -std=c++11"
   )
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  set_source_files_properties(test11.cpp PROPERTIES
-    COMPILE_FLAGS "-Wall -Wextra -Weverything -Werror -std=c++11 -Wno-c++98-compat"
-  )
+  if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    set_source_files_properties(test11.cpp PROPERTIES
+      COMPILE_FLAGS "/Wall /WX /wd4514 /wd5045"
+    )
+  else()
+    set_source_files_properties(test11.cpp PROPERTIES
+      COMPILE_FLAGS "-Wall -Wextra -Weverything -Werror -std=c++11"
+    )
+  endif()
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set_source_files_properties(test11.cpp PROPERTIES
     COMPILE_FLAGS "/Wall /WX /wd4514 /wd5045"
@@ -82,9 +100,15 @@ if (NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
       COMPILE_FLAGS "-Wall -Wextra -Werror -std=gnu89 -msse4.2"
     )
   elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
-    set_source_files_properties(test_sse42.c PROPERTIES
-      COMPILE_FLAGS "-Wall -Wextra -Weverything -Werror -std=gnu89 -msse4.2"
-    )
+    if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+      set_source_files_properties(test_sse42.c PROPERTIES
+        COMPILE_FLAGS "/Wall /WX /wd4514 /wd5045 /arch:AVX"
+      )
+    else()
+      set_source_files_properties(test_sse42.c PROPERTIES
+        COMPILE_FLAGS "-Wall -Wextra -Weverything -Werror -std=gnu89 -msse4.2"
+      )
+    endif()
   elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
     set_source_files_properties(test_sse42.c PROPERTIES
       COMPILE_FLAGS "/Wall /WX /wd4514 /wd5045 /arch:AVX"

@@ -1,13 +1,17 @@
 #include "hashmap.h"
 #include "utest.h"
 
-// Old MSVC doesn't support noexcept
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
+#if defined(_MSC_VER) && (_MSC_VER < 1920)
 #define NOTHROW __declspec(nothrow)
 #define NOEXCEPT
 #else
 #define NOTHROW
 #define NOEXCEPT noexcept
+#endif
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc++98-compat"
 #endif
 
 UTEST(cpp11, create) {
@@ -161,5 +165,33 @@ UTEST(cpp11, num_entries) {
   ASSERT_EQ(
       0, hashmap_remove(&hashmap, "foo", static_cast<unsigned>(strlen("foo"))));
   ASSERT_EQ(0u, hashmap_num_entries(&hashmap));
+  hashmap_destroy(&hashmap);
+}
+
+UTEST(cpp11, hash_conflict) {
+  struct hashmap_s hashmap;
+
+  int x = 42;
+  int y = 13;
+  int z = -53;
+
+  ASSERT_EQ(0, hashmap_create(4, &hashmap));
+
+  // These all hash to the same value.
+  ASSERT_EQ(0, hashmap_put(&hashmap, "000", 3, &x));
+  ASSERT_EQ(0, hashmap_put(&hashmap, "002", 3, &y));
+  ASSERT_EQ(0, hashmap_put(&hashmap, "007", 3, &z));
+  ASSERT_EQ(3u, hashmap_num_entries(&hashmap));
+
+  // Now we remove the middle value.
+  ASSERT_EQ(0, hashmap_remove(&hashmap, "002", 3));
+  ASSERT_EQ(2u, hashmap_num_entries(&hashmap));
+
+  // And now attempt to insert the last value again. There was a bug where this
+  // would insert a new entry incorrectly instead of resolving to the previous
+  // entry.
+  ASSERT_EQ(0, hashmap_put(&hashmap, "007", 3, &z));
+  ASSERT_EQ(2u, hashmap_num_entries(&hashmap));
+
   hashmap_destroy(&hashmap);
 }
