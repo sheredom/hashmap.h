@@ -203,3 +203,21 @@ UTEST(cpp, hash_conflict) {
 
   hashmap_destroy(&hashmap);
 }
+
+UTEST(cpp, issue_20) {
+  struct hashmap_s hashmap;
+  const char *key = "192.168.2.2hv_api.udache.com/abc/def";
+  unsigned int len = static_cast<unsigned int>(strlen(key));
+
+  int value = 42;
+  int *ptr = UTEST_NULL;
+
+  hashmap_create(1024, &hashmap);
+  hashmap_put(&hashmap, key, len, &value);
+
+  ptr = static_cast<int *>(hashmap_get(&hashmap, key, len));
+
+  ASSERT_EQ(&value, ptr);
+
+  hashmap_destroy(&hashmap);
+}
