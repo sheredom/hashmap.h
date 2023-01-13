@@ -26,6 +26,8 @@
 project(hashmap)
 cmake_minimum_required(VERSION 3.15)
 
+set(HASHMAP_USE_SANITIZER "" CACHE STRING "Set which Clang Sanitizer to use")
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../)
 
 if("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
@@ -126,3 +128,8 @@ add_executable(hashmap_test
   test.cpp
   test11.cpp
 )
+
+if(NOT "${HASHMAP_USE_SANITIZER}" STREQUAL "")
+  target_compile_options(hashmap_test PUBLIC -fno-omit-frame-pointer -fsanitize=${HASHMAP_USE_SANITIZER})
+  target_link_options(hashmap_test PUBLIC -fno-omit-frame-pointer -fsanitize=${HASHMAP_USE_SANITIZER})
+endif()
