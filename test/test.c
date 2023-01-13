@@ -174,7 +174,7 @@ UTEST(c, num_entries) {
 }
 
 static int rem_all(void *context, struct hashmap_element_s *e) {
-  (*(int *)context)+=e->key_len;
+  (*(int *)context) += e->key_len;
   return -1;
 }
 
