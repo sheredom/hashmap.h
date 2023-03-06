@@ -31,6 +31,29 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../)
 add_executable(hashmap_bench
   ../hashmap.h
   main.c
+  sse42.c
 )
 
-target_link_libraries(hashmap_bench m)
+if (NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
+  if("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
+    set_source_files_properties(sse42.c PROPERTIES
+      COMPILE_FLAGS "-Wall -Wextra -Werror -std=gnu89 -msse4.2"
+    )
+  elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
+    if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+      set_source_files_properties(sse42.c PROPERTIES
+        COMPILE_FLAGS "/Wall /WX /wd4514 /wd5045 /arch:AVX"
+      )
+    else()
+      set_source_files_properties(sse42.c PROPERTIES
+        COMPILE_FLAGS "-Wall -Wextra -Weverything -Werror -std=gnu89 -msse4.2"
+      )
+    endif()
+  elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
+    set_source_files_properties(sse42.c PROPERTIES
+      COMPILE_FLAGS "/Wall /WX /wd4514 /wd5045 /arch:AVX"
+    )
+  else()
+    message(WARNING "Unknown compiler '${CMAKE_C_COMPILER_ID}'!")
+  endif()
+endif()

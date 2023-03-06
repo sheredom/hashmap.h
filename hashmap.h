@@ -38,16 +38,25 @@
 #pragma warning(push, 0)
 #pragma warning(disable : 4668)
 #endif
+
 #include <stdlib.h>
 #include <string.h>
 
 #if (defined(_MSC_VER) && defined(__AVX__)) ||                                 \
     (!defined(_MSC_VER) && defined(__SSE4_2__))
-#define HASHMAP_SSE42
+#define HASHMAP_X86_SSE42
 #endif
 
-#if defined(HASHMAP_SSE42)
+#if defined(HASHMAP_X86_SSE42)
 #include <nmmintrin.h>
+#endif
+
+#if defined(__aarch64__) && defined(__ARM_FEATURE_CRC32)
+#define HASHMAP_ARM_CRC32
+#endif
+
+#if defined(HASHMAP_ARM_CRC32)
+#include <arm_acle.h>
 #endif
 
 #if defined(_MSC_VER)
@@ -86,7 +95,7 @@ struct hashmap_element_s {
 /* A hashmap has some maximum size and current size, as well as the data to
  * hold. */
 struct hashmap_s {
-  unsigned table_size;
+  unsigned table_size_minus_one;
   unsigned size;
   struct hashmap_element_s *data;
 };
@@ -214,12 +223,12 @@ static int hashmap_rehash_helper(struct hashmap_s *const m) HASHMAP_USED;
 
 int hashmap_create(const unsigned initial_size,
                    struct hashmap_s *const out_hashmap) {
-  out_hashmap->table_size = initial_size;
-  out_hashmap->size = 0;
-
   if (0 == initial_size || 0 != (initial_size & (initial_size - 1))) {
     return 1;
   }
+
+  out_hashmap->table_size_minus_one = initial_size - 1;
+  out_hashmap->size = 0;
 
   out_hashmap->data =
       HASHMAP_CAST(struct hashmap_element_s *,
@@ -273,7 +282,7 @@ void *hashmap_get(const struct hashmap_s *const m, const char *const key,
       }
     }
 
-    curr = (curr + 1) % m->table_size;
+    curr = (curr + 1) & m->table_size_minus_one;
   }
 
   /* Not found */
@@ -302,7 +311,7 @@ int hashmap_remove(struct hashmap_s *const m, const char *const key,
       }
     }
 
-    curr = (curr + 1) % m->table_size;
+    curr = (curr + 1) & m->table_size_minus_one;
   }
 
   return 1;
@@ -334,7 +343,7 @@ const char *hashmap_remove_and_return_key(struct hashmap_s *const m,
         return stored_key;
       }
     }
-    curr = (curr + 1) % m->table_size;
+    curr = (curr + 1) & m->table_size_minus_one;
   }
 
   return HASHMAP_NULL;
@@ -345,7 +354,7 @@ int hashmap_iterate(const struct hashmap_s *const m,
   unsigned int i;
 
   /* Linear probing */
-  for (i = 0; i < m->table_size; i++) {
+  for (i = 0; i <= m->table_size_minus_one; i++) {
     if (m->data[i].in_use) {
       if (!f(context, m->data[i].data)) {
         return 1;
@@ -355,7 +364,7 @@ int hashmap_iterate(const struct hashmap_s *const m,
   return 0;
 }
 
-int hashmap_iterate_pairs(struct hashmap_s *const hashmap,
+int hashmap_iterate_pairs(struct hashmap_s *const m,
                           int (*f)(void *const,
                                    struct hashmap_element_s *const),
                           void *const context) {
@@ -364,14 +373,14 @@ int hashmap_iterate_pairs(struct hashmap_s *const hashmap,
   int r;
 
   /* Linear probing */
-  for (i = 0; i < hashmap->table_size; i++) {
-    p = &hashmap->data[i];
+  for (i = 0; i <= m->table_size_minus_one; i++) {
+    p = &m->data[i];
     if (p->in_use) {
       r = f(context, p);
       switch (r) {
       case -1: /* remove item */
         memset(p, 0, sizeof(struct hashmap_element_s));
-        hashmap->size--;
+        m->size--;
         break;
       case 0: /* continue iterating */
         break;
@@ -393,12 +402,30 @@ unsigned hashmap_num_entries(const struct hashmap_s *const m) {
 }
 
 unsigned hashmap_crc32_helper(const char *const s, const unsigned len) {
-  unsigned i;
+  unsigned i = 0;
   unsigned crc32val = 0;
 
-#if defined(HASHMAP_SSE42)
-  for (i = 0; i < len; i++) {
+#if defined(HASHMAP_X86_SSE42)
+  for (; (i + sizeof(unsigned)) < len; i += sizeof(unsigned)) {
+    unsigned next;
+    memcpy(&next, &s[i], sizeof(next));
+    crc32val = _mm_crc32_u32(crc32val, next);
+  }
+
+  for (; i < len; i++) {
     crc32val = _mm_crc32_u8(crc32val, HASHMAP_CAST(unsigned char, s[i]));
+  }
+
+  return crc32val;
+#elif defined(HASHMAP_ARM_CRC32)
+  for (; (i + sizeof(uint64_t)) < len; i += sizeof(uint64_t)) {
+    uint64_t next;
+    memcpy(&next, &s[i], sizeof(next));
+    crc32val = __crc32d(crc32val, next);
+  }
+
+  for (; i < len; i++) {
+    crc32val = __crc32b(crc32val, HASHMAP_CAST(unsigned char, s[i]));
   }
 
   return crc32val;
@@ -458,7 +485,7 @@ unsigned hashmap_crc32_helper(const char *const s, const unsigned len) {
       0x988C474DU, 0x6AE7C44EU, 0xBE2DA0A5U, 0x4C4623A6U, 0x5F16D052U,
       0xAD7D5351U};
 
-  for (i = 0; i < len; i++) {
+  for (; i < len; i++) {
     crc32val = crc32_tab[(HASHMAP_CAST(unsigned char, crc32val) ^
                           HASHMAP_CAST(unsigned char, s[i]))] ^
                (crc32val >> 8);
@@ -485,7 +512,7 @@ unsigned hashmap_hash_helper_int_helper(const struct hashmap_s *const m,
   /* Knuth's Multiplicative Method */
   key = (key >> 3) * 2654435761;
 
-  return key % m->table_size;
+  return key & m->table_size_minus_one;
 }
 
 int hashmap_match_helper(const struct hashmap_element_s *const element,
@@ -500,7 +527,7 @@ int hashmap_hash_helper(const struct hashmap_s *const m, const char *const key,
   int total_in_use;
 
   /* If full, return immediately */
-  if (m->size >= m->table_size) {
+  if (m->size >= (m->table_size_minus_one + 1)) {
     return 0;
   }
 
@@ -520,7 +547,7 @@ int hashmap_hash_helper(const struct hashmap_s *const m, const char *const key,
       return 1;
     }
 
-    curr = (curr + 1) % m->table_size;
+    curr = (curr + 1) & m->table_size_minus_one;
   }
 
   curr = start;
@@ -534,7 +561,7 @@ int hashmap_hash_helper(const struct hashmap_s *const m, const char *const key,
         return 1;
       }
 
-      curr = (curr + 1) % m->table_size;
+      curr = (curr + 1) & m->table_size_minus_one;
     }
   }
 
@@ -556,7 +583,7 @@ int hashmap_rehash_iterator(void *const new_hash,
  */
 int hashmap_rehash_helper(struct hashmap_s *const m) {
   /* If this multiplication overflows hashmap_create will fail. */
-  unsigned new_size = 2 * m->table_size;
+  unsigned new_size = (m->table_size_minus_one + 1) * 2;
 
   struct hashmap_s new_hash;
 
@@ -575,6 +602,7 @@ int hashmap_rehash_helper(struct hashmap_s *const m) {
   }
 
   hashmap_destroy(m);
+
   /* put new hash into old hash structure by copying */
   memcpy(m, &new_hash, sizeof(struct hashmap_s));
 
