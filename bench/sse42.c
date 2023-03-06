@@ -26,23 +26,21 @@
 #include "ubench.h"
 #include "hashmap.h"
 
-#if defined(HASHMAP_X86_SSE42)
-#error Cannot be compiled with SSE 4.2 support!
-#endif
-
-UBENCH(create, initial_size_1_kilobyte) {
+#if (defined(_MSC_VER) && defined(__AVX__)) ||                                 \
+    (!defined(_MSC_VER) && defined(__SSE4_2__))
+UBENCH(create_sse42, initial_size_1_kilobyte) {
   struct hashmap_s hashmap;
   hashmap_create(1024, &hashmap);
   UBENCH_DO_NOTHING(&hashmap);
   hashmap_destroy(&hashmap);
 }
 
-struct put_small_keys {
+struct put_small_keys_sse42 {
   char *keys;
   unsigned key_len;
 };
 
-UBENCH_F_SETUP(put_small_keys) {
+UBENCH_F_SETUP(put_small_keys_sse42) {
   const unsigned max_keys = 1024 * 1024;
   const unsigned key_len = 8;
   char *const keys = malloc(max_keys * key_len);
@@ -56,9 +54,9 @@ UBENCH_F_SETUP(put_small_keys) {
   ubench_fixture->key_len = key_len;
 }
 
-UBENCH_F_TEARDOWN(put_small_keys) { free(ubench_fixture->keys); }
+UBENCH_F_TEARDOWN(put_small_keys_sse42) { free(ubench_fixture->keys); }
 
-UBENCH_F(put_small_keys, 1024) {
+UBENCH_F(put_small_keys_sse42, 1024) {
   struct hashmap_s hashmap;
   int i;
 
@@ -74,7 +72,7 @@ UBENCH_F(put_small_keys, 1024) {
   hashmap_destroy(&hashmap);
 }
 
-UBENCH_F(put_small_keys, 1048576) {
+UBENCH_F(put_small_keys_sse42, 1048576) {
   struct hashmap_s hashmap;
   int i;
 
@@ -90,12 +88,12 @@ UBENCH_F(put_small_keys, 1048576) {
   hashmap_destroy(&hashmap);
 }
 
-struct put_large_keys {
+struct put_large_keys_sse42 {
   char *keys;
   unsigned key_len;
 };
 
-UBENCH_F_SETUP(put_large_keys) {
+UBENCH_F_SETUP(put_large_keys_sse42) {
   const unsigned max_keys = 1024 * 1024;
   const unsigned key_len = 1024;
   char *const keys = malloc(max_keys * key_len);
@@ -109,9 +107,9 @@ UBENCH_F_SETUP(put_large_keys) {
   ubench_fixture->key_len = key_len;
 }
 
-UBENCH_F_TEARDOWN(put_large_keys) { free(ubench_fixture->keys); }
+UBENCH_F_TEARDOWN(put_large_keys_sse42) { free(ubench_fixture->keys); }
 
-UBENCH_F(put_large_keys, 1048576) {
+UBENCH_F(put_large_keys_sse42, 1048576) {
   struct hashmap_s hashmap;
   int i;
 
@@ -127,13 +125,13 @@ UBENCH_F(put_large_keys, 1048576) {
   hashmap_destroy(&hashmap);
 }
 
-struct get_small_keys {
+struct get_small_keys_sse42 {
   char *keys;
   unsigned key_len;
   struct hashmap_s hashmap;
 };
 
-UBENCH_F_SETUP(get_small_keys) {
+UBENCH_F_SETUP(get_small_keys_sse42) {
   const unsigned max_keys = 1024 * 1024;
   const unsigned key_len = 8;
   char *const keys = malloc(max_keys * key_len);
@@ -155,16 +153,16 @@ UBENCH_F_SETUP(get_small_keys) {
   ubench_fixture->hashmap = hashmap;
 }
 
-UBENCH_F_TEARDOWN(get_small_keys) {
+UBENCH_F_TEARDOWN(get_small_keys_sse42) {
   hashmap_destroy(&ubench_fixture->hashmap);
   free(ubench_fixture->keys);
 }
 
-UBENCH_F(get_small_keys, small_missing_key) {
-  UBENCH_DO_NOTHING(hashmap_get(&ubench_fixture->hashmap, "a", strlen("a")));
+UBENCH_F(get_small_keys_sse42, small_missing_key) {
+  UBENCH_DO_NOTHING(hashmap_get(&ubench_fixture->hashmap, "a", (unsigned)strlen("a")));
 }
 
-UBENCH_F(get_small_keys, large_missing_key) {
+UBENCH_F(get_small_keys_sse42, large_missing_key) {
 #define DATA_SIZE (16 * 1024)
   char data[DATA_SIZE];
   const unsigned data_size = DATA_SIZE;
@@ -178,13 +176,13 @@ UBENCH_F(get_small_keys, large_missing_key) {
   UBENCH_DO_NOTHING(hashmap_get(&ubench_fixture->hashmap, data, data_size));
 }
 
-struct get_large_keys {
+struct get_large_keys_sse42 {
   char *keys;
   unsigned key_len;
   struct hashmap_s hashmap;
 };
 
-UBENCH_F_SETUP(get_large_keys) {
+UBENCH_F_SETUP(get_large_keys_sse42) {
   const unsigned max_keys = 1024 * 1024;
   const unsigned key_len = 1024;
   char *const keys = malloc(max_keys * key_len);
@@ -206,16 +204,16 @@ UBENCH_F_SETUP(get_large_keys) {
   ubench_fixture->hashmap = hashmap;
 }
 
-UBENCH_F_TEARDOWN(get_large_keys) {
+UBENCH_F_TEARDOWN(get_large_keys_sse42) {
   hashmap_destroy(&ubench_fixture->hashmap);
   free(ubench_fixture->keys);
 }
 
-UBENCH_F(get_large_keys, small_missing_key) {
-  UBENCH_DO_NOTHING(hashmap_get(&ubench_fixture->hashmap, "a", strlen("a")));
+UBENCH_F(get_large_keys_sse42, small_missing_key) {
+  UBENCH_DO_NOTHING(hashmap_get(&ubench_fixture->hashmap, "a", (unsigned)strlen("a")));
 }
 
-UBENCH_F(get_large_keys, large_missing_key) {
+UBENCH_F(get_large_keys_sse42, large_missing_key) {
 #define DATA_SIZE (16 * 1024)
   char data[DATA_SIZE];
   const unsigned data_size = DATA_SIZE;
@@ -228,5 +226,4 @@ UBENCH_F(get_large_keys, large_missing_key) {
 
   UBENCH_DO_NOTHING(hashmap_get(&ubench_fixture->hashmap, data, data_size));
 }
-
-UBENCH_MAIN()
+#endif
