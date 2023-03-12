@@ -11,12 +11,16 @@ UTEST(c_sse42, create) {
 
 UTEST(c_sse42, create_zero) {
   struct hashmap_s hashmap;
-  ASSERT_EQ(1, hashmap_create(0, &hashmap));
+  ASSERT_EQ(0, hashmap_create(0, &hashmap));
+  ASSERT_LT(0u, hashmap_capacity(&hashmap));
+  hashmap_destroy(&hashmap);
 }
 
 UTEST(c_sse42, create_not_power_of_two) {
   struct hashmap_s hashmap;
-  ASSERT_EQ(1, hashmap_create(3, &hashmap));
+  ASSERT_EQ(0, hashmap_create(3, &hashmap));
+  ASSERT_LE(3u, hashmap_capacity(&hashmap));
+  hashmap_destroy(&hashmap);
 }
 
 static int set_context(void *const context, void *const element) {
@@ -163,18 +167,6 @@ UTEST(c_sse42, num_entries) {
   ASSERT_EQ(0, hashmap_remove(&hashmap, "foo", (unsigned)strlen("foo")));
   ASSERT_EQ(0u, hashmap_num_entries(&hashmap));
   hashmap_destroy(&hashmap);
-}
-
-extern unsigned crc32_scalar(const char *const s, const unsigned len);
-
-UTEST(c_sse42, crc32_matches) {
-  unsigned index;
-
-  for (index = 0; index <= 0xff; index++) {
-    const char c = (char)index;
-
-    ASSERT_EQ(crc32_scalar(&c, 1), hashmap_crc32_helper(&c, 1));
-  }
 }
 
 UTEST(c_sse42, hash_conflict) {

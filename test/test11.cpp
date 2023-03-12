@@ -22,12 +22,16 @@ UTEST(cpp11, create) {
 
 UTEST(cpp11, create_zero) {
   struct hashmap_s hashmap;
-  ASSERT_EQ(1, hashmap_create(0, &hashmap));
+  ASSERT_EQ(0, hashmap_create(0, &hashmap));
+  ASSERT_LT(0u, hashmap_capacity(&hashmap));
+  hashmap_destroy(&hashmap);
 }
 
 UTEST(cpp11, create_not_power_of_two) {
   struct hashmap_s hashmap;
-  ASSERT_EQ(1, hashmap_create(3, &hashmap));
+  ASSERT_EQ(0, hashmap_create(3, &hashmap));
+  ASSERT_LE(3u, hashmap_capacity(&hashmap));
+  hashmap_destroy(&hashmap);
 }
 
 static int NOTHROW set_context(void *const context,
