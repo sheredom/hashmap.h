@@ -15,12 +15,16 @@ UTEST(cpp, create) {
 
 UTEST(cpp, create_zero) {
   struct hashmap_s hashmap;
-  ASSERT_EQ(1, hashmap_create(0, &hashmap));
+  ASSERT_EQ(0, hashmap_create(0, &hashmap));
+  ASSERT_LT(0u, hashmap_capacity(&hashmap));
+  hashmap_destroy(&hashmap);
 }
 
 UTEST(cpp, create_not_power_of_two) {
   struct hashmap_s hashmap;
-  ASSERT_EQ(1, hashmap_create(3, &hashmap));
+  ASSERT_EQ(0, hashmap_create(3, &hashmap));
+  ASSERT_LE(3u, hashmap_capacity(&hashmap));
+  hashmap_destroy(&hashmap);
 }
 
 static int NOTHROW set_context(void *const context, void *const element) {
@@ -82,8 +86,8 @@ UTEST(cpp, remove_and_return_key) {
 
   /* Use a new string here so that we definitely have a different pointer key
    * being provided. */
-  ASSERT_EQ(key, hashmap_remove_and_return_key(
-                     &hashmap, "foo", static_cast<unsigned>(strlen("foo"))));
+  ASSERT_EQ(key, static_cast<const char *>(hashmap_remove_and_return_key(
+                     &hashmap, "foo", static_cast<unsigned>(strlen("foo")))));
   hashmap_destroy(&hashmap);
 }
 
