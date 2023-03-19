@@ -16,17 +16,9 @@ The current supported platforms are Linux, macOS and Windows.
 
 ### Fundamental Design
 
-The hashmap is made to work with UTF-8 string slices - sections of strings that
-are passed with a pointer and an explicit length. The reason for this design
-choice was that the hashmap is being used, by the author, to map symbols that
-are already resident in memory from a source file of a programming language. To
-save from causing millions of additional allocations to move these UTF-8 string
-slices into null-terminated strings, an explicit length is always passed.
-
-Note also that while the API passes char* pointers as the key - these keys are
-never used with the C API string functions. Instead `memcmp` is used to compare
-keys. This allows us to use UTF-8 strings in place of regular ASCII strings with
-no additional code.
+The hashmap is made to work with any arbitrary data keys - you just provide a
+pointer and size, and it'll hash that data. Comparison is done using `memcmp`,
+so zeroing out padding data is advised in structs.
 
 ### Create a Hashmap
 
@@ -41,8 +33,26 @@ if (0 != hashmap_create(initial_size, &hashmap)) {
 ```
 
 The `initial_size` parameter only sets the initial size of the hashmap - which
-can grow if multiple keys hit the same hash entry. The initial size must be a
-power of two, and creation will fail if it is not.
+can grow if multiple keys hit the same hash entry. The size of the hashmap is
+rounded up to the nearest power of two above the provided `initial_size`.
+
+There is also an extended creation function `hashmap_create_ex`:
+
+```c
+struct hashmap_s hashmap;
+struct hashmap_create_options_s options;
+memset(&options, 0, sizeof(options));
+
+// You can set a custom hasher that the hashmap should use.
+options.hasher = &my_hasher;
+
+// You can also specify the initial capacity of the hashmap.
+options.initial_capacity = 42;
+
+if (0 != hashmap_create_ex(options, &hashmap)) {
+  // error!
+}
+```
 
 ### Put Something in a Hashmap
 
@@ -169,6 +179,15 @@ To get the number of entries that have been put into a hashmap use the
 unsigned num_entries = hashmap_num_entries(&hashmap);
 ```
 
+### Get the Capcity of a Hashmap
+
+To get the actual number of buckets allocated in the hashmap (the capacity) use
+the `hashmap_capacity` function:
+
+```c
+unsigned num_entries = hashmap_capacity(&hashmap);
+```
+
 ### Destroy a Hashmap
 
 To destroy a hashmap when you are finished with it use the `hashmap_destroy`
@@ -189,10 +208,10 @@ by Elliott Back. The authors have applied the following further changes:
   external projects).
 - Used an explicitly public domain license for the code - the
   [unlicense](https://unlicense.org/).
-- Changed the API to take string slices (pointer & length) instead of null
-  terminated strings.
+- Changed the API to take arbitrary data pointers and length (it was originally
+  solely for UTF-8 string slices).
 - Did a pass to clean up the comments and function signatures.
-- Added second iterator, tests and documentation.  (Samuel D. Crow)
+- Added second iterator, tests and documentation. (Samuel D. Crow)
 
 ## License
 

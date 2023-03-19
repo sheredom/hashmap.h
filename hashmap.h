@@ -270,8 +270,8 @@ HASHMAP_ALWAYS_INLINE hashmap_uint32_t hashmap_clz(const hashmap_uint32_t x);
 #define HASHMAP_PTR_CAST(type, x) reinterpret_cast<type>(x)
 #define HASHMAP_NULL NULL
 #else
-#define HASHMAP_CAST(type, x) ((type)x)
-#define HASHMAP_PTR_CAST(type, x) ((type)x)
+#define HASHMAP_CAST(type, x) ((type)(x))
+#define HASHMAP_PTR_CAST(type, x) ((type)(x))
 #define HASHMAP_NULL 0
 #endif
 
@@ -569,15 +569,14 @@ hashmap_uint32_t hashmap_crc32_hasher(const hashmap_uint32_t seed,
   }
 #endif
 
-  /* Robert Jenkins' 32 bit Mix Function */
-  crc32val += (crc32val << 12);
-  crc32val ^= (crc32val >> 22);
-  crc32val += (crc32val << 4);
-  crc32val ^= (crc32val >> 9);
-  crc32val += (crc32val << 10);
-  crc32val ^= (crc32val >> 2);
-  crc32val += (crc32val << 7);
-  crc32val ^= (crc32val >> 12);
+  // Use the mix function from murmur3.
+  crc32val ^= len;
+
+  crc32val ^= crc32val >> 16;
+  crc32val *= 0x85ebca6b;
+  crc32val ^= crc32val >> 13;
+  crc32val *= 0xc2b2ae35;
+  crc32val ^= crc32val >> 16;
 
   return crc32val;
 }
