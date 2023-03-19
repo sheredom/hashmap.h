@@ -275,16 +275,6 @@ HASHMAP_ALWAYS_INLINE hashmap_uint32_t hashmap_clz(const hashmap_uint32_t x);
 #define HASHMAP_NULL 0
 #endif
 
-hashmap_uint32_t hashmap_clz(const hashmap_uint32_t x) {
-#if defined(_MSC_VER)
-  unsigned long result;
-  _BitScanReverse(&result, x);
-  return 31 - HASHMAP_CAST(hashmap_uint32_t, result);
-#else
-  return HASHMAP_CAST(hashmap_uint32_t, __builtin_clz(x));
-#endif
-}
-
 int hashmap_create(const hashmap_uint32_t initial_capacity,
                    struct hashmap_s *const out_hashmap) {
   struct hashmap_create_options_s options;
@@ -480,11 +470,13 @@ void hashmap_destroy(struct hashmap_s *const m) {
   memset(m, 0, sizeof(struct hashmap_s));
 }
 
-hashmap_uint32_t hashmap_num_entries(const struct hashmap_s *const m) {
+HASHMAP_ALWAYS_INLINE hashmap_uint32_t
+hashmap_num_entries(const struct hashmap_s *const m) {
   return m->size;
 }
 
-hashmap_uint32_t hashmap_capacity(const struct hashmap_s *const m) {
+HASHMAP_ALWAYS_INLINE hashmap_uint32_t
+hashmap_capacity(const struct hashmap_s *const m) {
   return 1u << m->log2_capacity;
 }
 
@@ -590,20 +582,22 @@ hashmap_uint32_t hashmap_crc32_hasher(const hashmap_uint32_t seed,
   return crc32val;
 }
 
-hashmap_uint32_t hashmap_hash_helper_int_helper(const struct hashmap_s *const m,
-                                                const void *const k,
-                                                const hashmap_uint32_t l) {
+HASHMAP_ALWAYS_INLINE hashmap_uint32_t
+hashmap_hash_helper_int_helper(const struct hashmap_s *const m,
+                               const void *const k, const hashmap_uint32_t l) {
   return (m->hasher(~0u, k, l) * 2654435769u) >> (32u - m->log2_capacity);
 }
 
-int hashmap_match_helper(const struct hashmap_element_s *const element,
-                         const void *const key, const hashmap_uint32_t len) {
+HASHMAP_ALWAYS_INLINE int
+hashmap_match_helper(const struct hashmap_element_s *const element,
+                     const void *const key, const hashmap_uint32_t len) {
   return (element->key_len == len) && (0 == memcmp(element->key, key, len));
 }
 
-int hashmap_hash_helper(const struct hashmap_s *const m, const void *const key,
-                        const hashmap_uint32_t len,
-                        hashmap_uint32_t *const out_index) {
+HASHMAP_ALWAYS_INLINE int
+hashmap_hash_helper(const struct hashmap_s *const m, const void *const key,
+                    const hashmap_uint32_t len,
+                    hashmap_uint32_t *const out_index) {
   hashmap_uint32_t curr;
   hashmap_uint32_t i;
   hashmap_uint32_t first_free;
@@ -653,7 +647,7 @@ int hashmap_rehash_iterator(void *const new_hash,
 /*
  * Doubles the size of the hashmap, and rehashes all the elements
  */
-int hashmap_rehash_helper(struct hashmap_s *const m) {
+HASHMAP_ALWAYS_INLINE int hashmap_rehash_helper(struct hashmap_s *const m) {
   struct hashmap_create_options_s options;
   struct hashmap_s new_m;
   int flag;
@@ -686,6 +680,16 @@ int hashmap_rehash_helper(struct hashmap_s *const m) {
   memcpy(m, &new_m, sizeof(struct hashmap_s));
 
   return 0;
+}
+
+HASHMAP_ALWAYS_INLINE hashmap_uint32_t hashmap_clz(const hashmap_uint32_t x) {
+#if defined(_MSC_VER)
+  unsigned long result;
+  _BitScanReverse(&result, x);
+  return 31 - HASHMAP_CAST(hashmap_uint32_t, result);
+#else
+  return HASHMAP_CAST(hashmap_uint32_t, __builtin_clz(x));
+#endif
 }
 
 #if defined(_MSC_VER)
