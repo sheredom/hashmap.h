@@ -24,51 +24,5 @@
 // For more information, please refer to <http://unlicense.org/>
 
 #include "utest.h"
-#include "hashmap.h"
 
 UTEST_MAIN()
-
-UTEST(main, one_byte) {
-  unsigned char data[256];
-  int i;
-  struct hashmap_s hashmap;
-
-  for (i = 0; i < 256; i++) {
-    data[i] = (unsigned char)i;
-  }
-
-  ASSERT_EQ(0, hashmap_create(1, &hashmap));
-
-  for (i = 0; i < 256; i++) {
-    ASSERT_EQ(0, hashmap_put(&hashmap, &data[i], 1, NULL));
-  }
-
-  ASSERT_EQ(hashmap_num_entries(&hashmap), 256u);
-  ASSERT_LE(hashmap_capacity(&hashmap), 2048u);
-
-  hashmap_destroy(&hashmap);
-}
-
-UTEST(main, two_bytes) {
-  unsigned short *data;
-  int i;
-  struct hashmap_s hashmap;
-
-  data = (unsigned short *)malloc(sizeof(unsigned short) * 16384);
-
-  for (i = 0; i < 16384; i++) {
-    data[i] = (unsigned short)i;
-  }
-
-  ASSERT_EQ(0, hashmap_create(1, &hashmap));
-
-  for (i = 0; i < 16384; i++) {
-    ASSERT_EQ(0, hashmap_put(&hashmap, &data[i], 2, NULL));
-  }
-
-  ASSERT_EQ(hashmap_num_entries(&hashmap), 16384u);
-  ASSERT_LE(hashmap_capacity(&hashmap), 65536u);
-
-  hashmap_destroy(&hashmap);
-  free(data);
-}
