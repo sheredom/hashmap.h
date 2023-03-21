@@ -17,8 +17,9 @@ The current supported platforms are Linux, macOS and Windows.
 ### Fundamental Design
 
 The hashmap is made to work with any arbitrary data keys - you just provide a
-pointer and size, and it'll hash that data. Comparison is done using `memcmp`,
-so zeroing out padding data is advised in structs.
+pointer and size, and it'll hash that data. The default hasher is a crc32
+variant using hardware intrinsics if possible, and the default comparer just
+uses `memcmp`, so zeroing out any padding in struct keys is advisable.
 
 ### Create a Hashmap
 
@@ -45,6 +46,9 @@ memset(&options, 0, sizeof(options));
 
 // You can set a custom hasher that the hashmap should use.
 options.hasher = &my_hasher;
+
+// You can set a custom comparer that the hashmap should for comparing keys.
+options.comparer = &my_comparer;
 
 // You can also specify the initial capacity of the hashmap.
 options.initial_capacity = 42;
