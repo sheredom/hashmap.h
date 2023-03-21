@@ -14,6 +14,8 @@
 #define NOEXCEPT
 #endif
 
+#include <string.h>
+
 MY_TEST_WRAPPER(create) {
   struct hashmap_s hashmap;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
@@ -44,18 +46,33 @@ static hashmap_uint32_t custom_hasher(const hashmap_uint32_t seed,
          HASHMAP_CAST(hashmap_uint32_t, cs) ^ len;
 }
 
+static int custom_comparer(const void *const a, const hashmap_uint32_t a_len,
+                           const void *const b, const hashmap_uint32_t b_len) {
+  return (a_len == b_len) &&
+         0 == strncmp(HASHMAP_PTR_CAST(const char *, a),
+                      HASHMAP_PTR_CAST(const char *, b), a_len);
+}
+
 MY_TEST_WRAPPER(create_ex) {
   int thing = 42;
+  const char *const key = "foo";
   struct hashmap_s hashmap;
   struct hashmap_create_options_s options;
   memset(&options, 0, sizeof(options));
   options.initial_capacity = 42;
   options.hasher = &custom_hasher;
+  options.comparer = &custom_comparer;
 
   ASSERT_EQ(0, hashmap_create_ex(options, &hashmap));
   ASSERT_LE(42u, hashmap_capacity(&hashmap));
 
-  ASSERT_EQ(0, hashmap_put(&hashmap, &thing, sizeof(thing), HASHMAP_NULL));
+  ASSERT_EQ(0, hashmap_put(&hashmap, key, HASHMAP_CAST(unsigned, strlen(key)),
+                           &thing));
+
+  ASSERT_EQ(&thing,
+            HASHMAP_PTR_CAST(const int *,
+                             hashmap_get(&hashmap, key,
+                                         HASHMAP_CAST(unsigned, strlen(key)))));
 
   ASSERT_EQ(1u, hashmap_num_entries(&hashmap));
 

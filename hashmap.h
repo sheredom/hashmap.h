@@ -120,19 +120,25 @@ typedef struct hashmap_element_s {
   void *data;
 } hashmap_element_t;
 
+typedef hashmap_uint32_t (*hashmap_hasher_t)(hashmap_uint32_t seed,
+                                             const void *key,
+                                             hashmap_uint32_t key_len);
+typedef int (*hashmap_comparer_t)(const void *a, hashmap_uint32_t a_len,
+                                  const void *b, hashmap_uint32_t b_len);
+
 typedef struct hashmap_s {
   hashmap_uint32_t log2_capacity;
   hashmap_uint32_t size;
-  hashmap_uint32_t (*hasher)(hashmap_uint32_t seed, const void *key,
-                             hashmap_uint32_t key_len);
+  hashmap_hasher_t hasher;
+  hashmap_comparer_t comparer;
   struct hashmap_element_s *data;
 } hashmap_t;
 
 #define HASHMAP_LINEAR_PROBE_LENGTH (8)
 
 typedef struct hashmap_create_options_s {
-  hashmap_uint32_t (*hasher)(hashmap_uint32_t seed, const void *key,
-                             hashmap_uint32_t key_len);
+  hashmap_hasher_t hasher;
+  hashmap_comparer_t comparer;
   hashmap_uint32_t initial_capacity;
   hashmap_uint32_t _;
 } hashmap_create_options_t;
@@ -243,15 +249,16 @@ hashmap_capacity(const struct hashmap_s *const hashmap);
 /// @param hashmap The hashmap to destroy.
 HASHMAP_WEAK void hashmap_destroy(struct hashmap_s *const hashmap);
 
-HASHMAP_WEAK hashmap_uint32_t hashmap_crc32_hasher(const hashmap_uint32_t seed,
-                                                   const void *const s,
-                                                   const hashmap_uint32_t len);
+static hashmap_uint32_t hashmap_crc32_hasher(const hashmap_uint32_t seed,
+                                             const void *const s,
+                                             const hashmap_uint32_t len);
+static int hashmap_memcmp_comparer(const void *const a,
+                                   const hashmap_uint32_t a_len,
+                                   const void *const b,
+                                   const hashmap_uint32_t b_len);
 HASHMAP_ALWAYS_INLINE hashmap_uint32_t hashmap_hash_helper_int_helper(
     const struct hashmap_s *const m, const void *const key,
     const hashmap_uint32_t len);
-HASHMAP_ALWAYS_INLINE int
-hashmap_match_helper(const struct hashmap_element_s *const element,
-                     const void *const key, const hashmap_uint32_t len);
 HASHMAP_ALWAYS_INLINE int
 hashmap_hash_helper(const struct hashmap_s *const m, const void *const key,
                     const hashmap_uint32_t len,
@@ -297,6 +304,10 @@ int hashmap_create_ex(struct hashmap_create_options_s options,
     options.hasher = &hashmap_crc32_hasher;
   }
 
+  if (HASHMAP_NULL == options.comparer) {
+    options.comparer = &hashmap_memcmp_comparer;
+  }
+
   out_hashmap->data = HASHMAP_CAST(
       struct hashmap_element_s *,
       calloc(options.initial_capacity + HASHMAP_LINEAR_PROBE_LENGTH,
@@ -305,6 +316,7 @@ int hashmap_create_ex(struct hashmap_create_options_s options,
   out_hashmap->log2_capacity = 31 - hashmap_clz(options.initial_capacity);
   out_hashmap->size = 0;
   out_hashmap->hasher = options.hasher;
+  out_hashmap->comparer = options.comparer;
 
   return 0;
 }
@@ -351,9 +363,11 @@ void *hashmap_get(const struct hashmap_s *const m, const void *const key,
 
   /* Linear probing, if necessary */
   for (i = 0; i < HASHMAP_LINEAR_PROBE_LENGTH; i++) {
-    if (m->data[curr + i].in_use) {
-      if (hashmap_match_helper(&m->data[curr + i], key, len)) {
-        return m->data[curr + i].data;
+    const hashmap_uint32_t index = curr + i;
+
+    if (m->data[index].in_use) {
+      if (m->comparer(m->data[index].key, m->data[index].key_len, key, len)) {
+        return m->data[index].data;
       }
     }
   }
@@ -374,10 +388,12 @@ int hashmap_remove(struct hashmap_s *const m, const void *const key,
 
   /* Linear probing, if necessary */
   for (i = 0; i < HASHMAP_LINEAR_PROBE_LENGTH; i++) {
-    if (m->data[curr + i].in_use) {
-      if (hashmap_match_helper(&m->data[curr + i], key, len)) {
+    const hashmap_uint32_t index = curr + i;
+
+    if (m->data[index].in_use) {
+      if (m->comparer(m->data[index].key, m->data[index].key_len, key, len)) {
         /* Blank out the fields including in_use */
-        memset(&m->data[curr + i], 0, sizeof(struct hashmap_element_s));
+        memset(&m->data[index], 0, sizeof(struct hashmap_element_s));
 
         /* Reduce the size */
         m->size--;
@@ -403,14 +419,14 @@ const void *hashmap_remove_and_return_key(struct hashmap_s *const m,
 
   /* Linear probing, if necessary */
   for (i = 0; i < HASHMAP_LINEAR_PROBE_LENGTH; i++) {
-    if (m->data[curr + i].in_use) {
-      if (hashmap_match_helper(&m->data[curr + i], key, len)) {
-        const void *const stored_key = m->data[curr + i].key;
+    const hashmap_uint32_t index = curr + i;
+
+    if (m->data[index].in_use) {
+      if (m->comparer(m->data[index].key, m->data[index].key_len, key, len)) {
+        const void *const stored_key = m->data[index].key;
 
         /* Blank out the fields */
-        m->data[curr + i].in_use = 0;
-        m->data[curr + i].data = HASHMAP_NULL;
-        m->data[curr + i].key = HASHMAP_NULL;
+        memset(&m->data[index], 0, sizeof(struct hashmap_element_s));
 
         /* Reduce the size */
         m->size--;
@@ -581,16 +597,15 @@ hashmap_uint32_t hashmap_crc32_hasher(const hashmap_uint32_t seed,
   return crc32val;
 }
 
+int hashmap_memcmp_comparer(const void *const a, const hashmap_uint32_t a_len,
+                            const void *const b, const hashmap_uint32_t b_len) {
+  return (a_len == b_len) && (0 == memcmp(a, b, a_len));
+}
+
 HASHMAP_ALWAYS_INLINE hashmap_uint32_t
 hashmap_hash_helper_int_helper(const struct hashmap_s *const m,
                                const void *const k, const hashmap_uint32_t l) {
   return (m->hasher(~0u, k, l) * 2654435769u) >> (32u - m->log2_capacity);
-}
-
-HASHMAP_ALWAYS_INLINE int
-hashmap_match_helper(const struct hashmap_element_s *const element,
-                     const void *const key, const hashmap_uint32_t len) {
-  return (element->key_len == len) && (0 == memcmp(element->key, key, len));
 }
 
 HASHMAP_ALWAYS_INLINE int
@@ -615,8 +630,9 @@ hashmap_hash_helper(const struct hashmap_s *const m, const void *const key,
 
     if (!m->data[index].in_use) {
       first_free = (first_free < index) ? first_free : index;
-    } else if (hashmap_match_helper(&m->data[index], key, len)) {
-      *out_index = curr + i;
+    } else if (m->comparer(m->data[index].key, m->data[index].key_len, key,
+                           len)) {
+      *out_index = index;
       return 1;
     }
   }
