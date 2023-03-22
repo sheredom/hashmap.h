@@ -47,4 +47,4 @@ jobs:
     - name: Test
       working-directory: ${{github.workspace}}/build
       shell: bash
-      run: ./hashmap_test
+      run: ./hashmap_test --confidence=100

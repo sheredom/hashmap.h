@@ -161,8 +161,9 @@ HASHMAP_WEAK int hashmap_create(const hashmap_uint32_t initial_capacity,
 ///
 /// The options members work as follows:
 /// - initial_capacity The initial capacity of the hashmap.
-/// - hasher Which hashing function to use with the hashmap (by default the
-//    crc32 with Robert Jenkins' mix is used).
+/// - hasher Which hashing function to use with the hashmap (by default a crc32
+///          hash is used).
+/// - comparer Which key compare function to use (the default is memcmp).
 HASHMAP_WEAK int hashmap_create_ex(struct hashmap_create_options_s options,
                                    struct hashmap_s *const out_hashmap);
 

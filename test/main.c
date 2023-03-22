@@ -24,5 +24,29 @@
 // For more information, please refer to <http://unlicense.org/>
 
 #include "utest.h"
+#include "ubench.h"
 
-UTEST_MAIN()
+#include <string.h>
+
+UTEST_STATE();
+UBENCH_STATE();
+
+int main(const int argc, const char *const argv[]) {
+  int result;
+
+  if (1 < argc) {
+    if (0 == strcmp(argv[1], "test")) {
+      return utest_main(argc, argv);
+    } else if (0 == strcmp(argv[1], "bench")) {
+      return ubench_main(argc, argv);
+    }
+  }
+
+  result = utest_main(argc, argv);
+
+  if (0 != result) {
+    return result;
+  }
+
+  return ubench_main(argc, argv);
+}

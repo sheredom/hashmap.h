@@ -119,6 +119,7 @@ typedef uint32_t utest_uint32_t;
 #pragma GCC diagnostic ignored "-Wunknown-pragmas"
 #endif
 
+#if !defined(SHEREDOM_UBENCH_H_INCLUDED)
 // use old QueryPerformanceCounter definitions (not sure is this needed in some
 // edge cases or not) on Win7 with VS2015 these extern declaration cause "second
 // C linkage of overloaded function not allowed" error
@@ -138,6 +139,9 @@ UTEST_C_FUNC __declspec(dllimport) int __stdcall QueryPerformanceCounter(
     utest_large_integer *);
 UTEST_C_FUNC __declspec(dllimport) int __stdcall QueryPerformanceFrequency(
     utest_large_integer *);
+#else
+typedef ubench_large_integer utest_large_integer;
+#endif
 
 #if defined(__MINGW64__) || defined(__MINGW32__)
 #pragma GCC diagnostic pop

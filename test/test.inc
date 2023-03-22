@@ -318,11 +318,203 @@ MY_TEST_WRAPPER(two_bytes) {
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
 
   for (i = 0; i < 16384; i++) {
-    ASSERT_EQ(0, hashmap_put(&hashmap, &data[i], 2, NULL));
+    ASSERT_EQ(0, hashmap_put(&hashmap, &data[i], 2, HASHMAP_NULL));
   }
 
   ASSERT_EQ(hashmap_num_entries(&hashmap), 16384u);
   ASSERT_LE(hashmap_capacity(&hashmap), 65536u);
+
+  hashmap_destroy(&hashmap);
+  free(data);
+}
+
+MY_BENCH_WRAPPER(put_16384_2_byte_keys) {
+  unsigned short *data;
+  int i;
+  struct hashmap_s hashmap;
+
+  data = HASHMAP_PTR_CAST(unsigned short *,
+                          malloc(sizeof(unsigned short) * 16384));
+
+  for (i = 0; i < 16384; i++) {
+    data[i] = HASHMAP_CAST(unsigned short, i);
+  }
+
+  hashmap_create(1, &hashmap);
+
+  UBENCH_DO_BENCHMARK() {
+    for (i = 0; i < 16384; i++) {
+      hashmap_put(&hashmap, &data[i], 2, HASHMAP_NULL);
+    }
+  }
+
+  hashmap_destroy(&hashmap);
+  free(data);
+}
+
+MY_BENCH_WRAPPER(get_16384_2_byte_keys) {
+  unsigned short *data;
+  int i;
+  struct hashmap_s hashmap;
+
+  data = HASHMAP_PTR_CAST(unsigned short *,
+                          malloc(sizeof(unsigned short) * 16384));
+
+  for (i = 0; i < 16384; i++) {
+    data[i] = HASHMAP_CAST(unsigned short, i);
+  }
+
+  hashmap_create(1, &hashmap);
+
+  for (i = 0; i < 16384; i++) {
+    hashmap_put(&hashmap, &data[i], 2, HASHMAP_NULL);
+  }
+
+  UBENCH_DO_BENCHMARK() {
+    for (i = 0; i < 16384; i++) {
+      UBENCH_DO_NOTHING(hashmap_get(&hashmap, &data[i], 2));
+    }
+  }
+
+  hashmap_destroy(&hashmap);
+  free(data);
+}
+
+MY_BENCH_WRAPPER(remove_16384_2_byte_keys) {
+  unsigned short *data;
+  int i;
+  struct hashmap_s hashmap;
+
+  data = HASHMAP_PTR_CAST(unsigned short *,
+                          malloc(sizeof(unsigned short) * 16384));
+
+  for (i = 0; i < 16384; i++) {
+    data[i] = HASHMAP_CAST(unsigned short, i);
+  }
+
+  hashmap_create(1, &hashmap);
+
+  for (i = 0; i < 16384; i++) {
+    hashmap_put(&hashmap, &data[i], 2, HASHMAP_NULL);
+  }
+
+  UBENCH_DO_BENCHMARK() {
+    for (i = 0; i < 16384; i++) {
+      hashmap_remove(&hashmap, &data[i], 2);
+    }
+  }
+
+  hashmap_destroy(&hashmap);
+  free(data);
+}
+
+MY_BENCH_WRAPPER(put_4096_1024_byte_keys) {
+  unsigned char *data;
+  int i;
+  struct hashmap_s hashmap;
+
+  data = HASHMAP_PTR_CAST(unsigned char *, malloc(16384 * 1024));
+  memset(data, 0, 4096 * 1024);
+
+  for (i = 0; i < 4096; i++) {
+    memcpy(&data[i * 1024 + (1024 - 4)], &i, sizeof(i));
+  }
+
+  hashmap_create(1, &hashmap);
+
+  UBENCH_DO_BENCHMARK() {
+    for (i = 0; i < 4096; i++) {
+      hashmap_put(&hashmap, &data[i * 1024], 1024, HASHMAP_NULL);
+    }
+  }
+
+  hashmap_destroy(&hashmap);
+  free(data);
+}
+
+MY_BENCH_WRAPPER(get_4096_1024_byte_keys) {
+  unsigned char *data;
+  int i;
+  struct hashmap_s hashmap;
+
+  data = HASHMAP_PTR_CAST(unsigned char *, malloc(16384 * 1024));
+  memset(data, 0, 4096 * 1024);
+
+  for (i = 0; i < 4096; i++) {
+    memcpy(&data[i * 1024 + (1024 - 4)], &i, sizeof(i));
+  }
+
+  hashmap_create(1, &hashmap);
+
+  for (i = 0; i < 4096; i++) {
+    hashmap_put(&hashmap, &data[i * 1024], 1024, HASHMAP_NULL);
+  }
+
+  UBENCH_DO_BENCHMARK() {
+    for (i = 0; i < 4096; i++) {
+      UBENCH_DO_NOTHING(hashmap_get(&hashmap, &data[i * 1024], 1024));
+    }
+  }
+
+  hashmap_destroy(&hashmap);
+  free(data);
+}
+
+MY_BENCH_WRAPPER(remove_4096_1024_byte_keys) {
+  unsigned char *data;
+  int i;
+  struct hashmap_s hashmap;
+
+  data = HASHMAP_PTR_CAST(unsigned char *, malloc(16384 * 1024));
+  memset(data, 0, 4096 * 1024);
+
+  for (i = 0; i < 4096; i++) {
+    memcpy(&data[i * 1024 + (1024 - 4)], &i, sizeof(i));
+  }
+
+  hashmap_create(1, &hashmap);
+
+  for (i = 0; i < 4096; i++) {
+    hashmap_put(&hashmap, &data[i * 1024], 1024, HASHMAP_NULL);
+  }
+
+  UBENCH_DO_BENCHMARK() {
+    for (i = 0; i < 4096; i++) {
+      hashmap_remove(&hashmap, &data[i * 1024], 1024);
+    }
+  }
+
+  hashmap_destroy(&hashmap);
+  free(data);
+}
+
+static int my_iterator(void *const context, void *const value) {
+  UBENCH_DO_NOTHING(context);
+  UBENCH_DO_NOTHING(value);
+  return 1;
+}
+
+MY_BENCH_WRAPPER(iterate_4096_1024_byte_keys) {
+  unsigned char *data;
+  int i;
+  struct hashmap_s hashmap;
+
+  data = HASHMAP_PTR_CAST(unsigned char *, malloc(16384 * 1024));
+  memset(data, 0, 4096 * 1024);
+
+  for (i = 0; i < 4096; i++) {
+    memcpy(&data[i * 1024 + (1024 - 4)], &i, sizeof(i));
+  }
+
+  hashmap_create(1, &hashmap);
+
+  for (i = 0; i < 4096; i++) {
+    hashmap_put(&hashmap, &data[i * 1024], 1024, HASHMAP_NULL);
+  }
+
+  UBENCH_DO_BENCHMARK() {
+    hashmap_iterate(&hashmap, &my_iterator, HASHMAP_NULL);
+  }
 
   hashmap_destroy(&hashmap);
   free(data);
