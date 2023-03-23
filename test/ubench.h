@@ -96,6 +96,8 @@ typedef uint64_t ubench_uint64_t;
 #endif
 
 #if defined(_MSC_VER)
+
+#if !defined(SHEREDOM_UTEST_H_INCLUDED)
 typedef union {
   struct {
     unsigned long LowPart;
@@ -112,6 +114,11 @@ UBENCH_C_FUNC __declspec(dllimport) int __stdcall QueryPerformanceCounter(
     ubench_large_integer *);
 UBENCH_C_FUNC __declspec(dllimport) int __stdcall QueryPerformanceFrequency(
     ubench_large_integer *);
+
+#else
+typedef utest_large_integer ubench_large_integer;
+#endif
+
 #elif defined(__linux__)
 
 /*

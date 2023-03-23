@@ -46,4 +46,4 @@ build_script:
   - copy %CONFIGURATION%\hashmap_test.exe hashmap_test.exe
 
 test_script:
-  - hashmap_test.exe
+  - hashmap_test.exe test
