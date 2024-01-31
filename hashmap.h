@@ -81,14 +81,26 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
 #pragma clang diagnostic ignored "-Wstatic-in-inline"
+
+#if __has_warning("-Wunsafe-buffer-usage")
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
+#endif
+#endif
+
+#if defined(__TINYC__)
+#define HASHMAP_ATTRIBUTE(a) __attribute((a))
+#else
+#define HASHMAP_ATTRIBUTE(a) __attribute__((a))
 #endif
 
 #if defined(_MSC_VER)
 #define HASHMAP_WEAK __inline
-#elif defined(__clang__) || defined(__GNUC__)
-#define HASHMAP_WEAK __attribute__((weak))
+#elif defined(__MINGW32__) || defined(__MINGW64__)
+#define HASHMAP_WEAK static HASHMAP_ATTRIBUTE(used)
+#elif defined(__clang__) || defined(__GNUC__) || defined(__TINYC__)
+#define HASHMAP_WEAK HASHMAP_ATTRIBUTE(weak)
 #else
-#error Non clang, non gcc, non MSVC compiler found!
+#error Non clang, non gcc, non MSVC, non tcc compiler found!
 #endif
 
 #if defined(_MSC_VER)
@@ -701,7 +713,14 @@ HASHMAP_ALWAYS_INLINE hashmap_uint32_t hashmap_clz(const hashmap_uint32_t x) {
 #if defined(_MSC_VER)
   unsigned long result;
   _BitScanReverse(&result, x);
-  return 31 - HASHMAP_CAST(hashmap_uint32_t, result);
+  return 31u - HASHMAP_CAST(hashmap_uint32_t, result);
+#elif defined(__TINYC__)
+  union {
+    double d;
+    hashmap_uint64_t u;
+  } u;
+  u.d = HASHMAP_CAST(double, x) + 0.5;
+  return 1054u - HASHMAP_CAST(hashmap_uint32_t, u.u >> 52);
 #else
   return HASHMAP_CAST(hashmap_uint32_t, __builtin_clz(x));
 #endif
