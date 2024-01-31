@@ -14,6 +14,12 @@
 #define NOEXCEPT
 #endif
 
+#if defined(__clang__)
+#if __has_warning("-Wunsafe-buffer-usage")
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
+#endif
+#endif
+
 #include <string.h>
 
 MY_TEST_WRAPPER(create) {
