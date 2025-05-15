@@ -682,6 +682,7 @@ HASHMAP_ALWAYS_INLINE int hashmap_rehash_helper(struct hashmap_s *const m) {
   memset(&options, 0, sizeof(options));
   options.initial_capacity = hashmap_capacity(m) * 2;
   options.hasher = m->hasher;
+  options.comparer = m->comparer;
 
   if (0 == options.initial_capacity) {
     return 1;
