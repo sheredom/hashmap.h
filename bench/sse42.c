@@ -42,7 +42,7 @@ struct put_small_keys_sse42 {
 
 UBENCH_F_SETUP(put_small_keys_sse42) {
   const unsigned max_keys = 1024 * 1024;
-  const unsigned key_len = 8;
+  const unsigned key_len = 8+1;
   char *const keys = malloc(max_keys * key_len);
   unsigned i;
 
@@ -95,7 +95,7 @@ struct put_large_keys_sse42 {
 
 UBENCH_F_SETUP(put_large_keys_sse42) {
   const unsigned max_keys = 1024 * 1024;
-  const unsigned key_len = 1024;
+  const unsigned key_len = 1024+1;
   char *const keys = malloc(max_keys * key_len);
   unsigned i;
 
@@ -133,7 +133,7 @@ struct get_small_keys_sse42 {
 
 UBENCH_F_SETUP(get_small_keys_sse42) {
   const unsigned max_keys = 1024 * 1024;
-  const unsigned key_len = 8;
+  const unsigned key_len = 8+1;
   char *const keys = malloc(max_keys * key_len);
   unsigned i;
   struct hashmap_s hashmap;
@@ -184,7 +184,7 @@ struct get_large_keys_sse42 {
 
 UBENCH_F_SETUP(get_large_keys_sse42) {
   const unsigned max_keys = 1024 * 1024;
-  const unsigned key_len = 1024;
+  const unsigned key_len = 1024+1;
   char *const keys = malloc(max_keys * key_len);
   unsigned i;
   struct hashmap_s hashmap;
