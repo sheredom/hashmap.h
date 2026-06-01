@@ -1,6 +1,5 @@
 #include "hashmap.h"
 #include "utest.h"
 
-#define MY_TEST_WRAPPER(name) UTEST(cpp11, name)
-
-#include "test.inc"
+#define HASHMAP_SUITE cpp11
+#include "test_shared.h"
