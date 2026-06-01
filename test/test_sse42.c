@@ -1,11 +1,10 @@
 #include "hashmap.h"
 #include "utest.h"
 
-#if (defined(_MSC_VER) && defined(__AVX__)) ||                                 \
+#if (defined(_MSC_VER) && defined(__AVX__)) || \
     (!defined(_MSC_VER) && defined(__SSE4_2__))
 
-#define MY_TEST_WRAPPER(name) UTEST(c_sse2, name)
-
-#include "test.inc"
+#define HASHMAP_SUITE c_sse42
+#include "test_shared.h"
 
 #endif

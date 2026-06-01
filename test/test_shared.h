@@ -1,3 +1,19 @@
+/* Shared test cases for hashmap.h.
+
+   Each test translation unit must define HASHMAP_SUITE before including this
+   header: #define HASHMAP_SUITE c #include "test_shared.h"
+
+   The HASHMAP_TEST macro expands HASHMAP_SUITE before UTEST token pasting,
+   giving each standard-specific translation unit unique test symbols.
+*/
+
+#ifndef HASHMAP_SUITE
+#error "Define HASHMAP_SUITE before including test_shared.h"
+#endif
+
+#define HASHMAP_TEST2(suite, name) UTEST(suite, name)
+#define HASHMAP_TEST(name) HASHMAP_TEST2(HASHMAP_SUITE, name)
+
 #if defined(__cplusplus) && (__cplusplus >= 201103L) && defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc++98-compat"
@@ -22,20 +38,20 @@
 
 #include <string.h>
 
-MY_TEST_WRAPPER(create) {
+HASHMAP_TEST(create) {
   struct hashmap_s hashmap;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
   hashmap_destroy(&hashmap);
 }
 
-MY_TEST_WRAPPER(create_zero) {
+HASHMAP_TEST(create_zero) {
   struct hashmap_s hashmap;
   ASSERT_EQ(0, hashmap_create(0, &hashmap));
   ASSERT_LT(0u, hashmap_capacity(&hashmap));
   hashmap_destroy(&hashmap);
 }
 
-MY_TEST_WRAPPER(create_not_power_of_two) {
+HASHMAP_TEST(create_not_power_of_two) {
   struct hashmap_s hashmap;
   ASSERT_EQ(0, hashmap_create(3, &hashmap));
   ASSERT_LE(3u, hashmap_capacity(&hashmap));
@@ -59,7 +75,7 @@ static int custom_comparer(const void *const a, const hashmap_uint32_t a_len,
                       HASHMAP_PTR_CAST(const char *, b), a_len);
 }
 
-MY_TEST_WRAPPER(create_ex) {
+HASHMAP_TEST(create_ex) {
   int thing = 42;
   const char *const key = "foo";
   struct hashmap_s hashmap;
@@ -91,7 +107,7 @@ static int NOTHROW set_context(void *const context,
   return 1;
 }
 
-MY_TEST_WRAPPER(put) {
+HASHMAP_TEST(put) {
   struct hashmap_s hashmap;
   int x = 42;
   int y = 13;
@@ -103,7 +119,7 @@ MY_TEST_WRAPPER(put) {
   hashmap_destroy(&hashmap);
 }
 
-MY_TEST_WRAPPER(get_exists) {
+HASHMAP_TEST(get_exists) {
   struct hashmap_s hashmap;
   int x = 42;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
@@ -115,7 +131,7 @@ MY_TEST_WRAPPER(get_exists) {
   hashmap_destroy(&hashmap);
 }
 
-MY_TEST_WRAPPER(get_does_not_exists) {
+HASHMAP_TEST(get_does_not_exists) {
   struct hashmap_s hashmap;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
   ASSERT_FALSE(
@@ -123,7 +139,7 @@ MY_TEST_WRAPPER(get_does_not_exists) {
   hashmap_destroy(&hashmap);
 }
 
-MY_TEST_WRAPPER(remove) {
+HASHMAP_TEST(remove) {
   struct hashmap_s hashmap;
   int x = 42;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
@@ -134,7 +150,7 @@ MY_TEST_WRAPPER(remove) {
   hashmap_destroy(&hashmap);
 }
 
-MY_TEST_WRAPPER(remove_and_return_key) {
+HASHMAP_TEST(remove_and_return_key) {
   /* The '&bar' portion of the string just uniques the constant from the 'foo'
    * used later. */
   const char *const key = "foo&bar";
@@ -159,7 +175,7 @@ static int NOTHROW early_exit(void *const context, void *const element) {
   return 0;
 }
 
-MY_TEST_WRAPPER(iterate_early_exit) {
+HASHMAP_TEST(iterate_early_exit) {
   struct hashmap_s hashmap;
   int x[27] = {0};
   int total = 0;
@@ -200,7 +216,7 @@ static int NOTHROW all(void *const context, void *const element) {
   return 1;
 }
 
-MY_TEST_WRAPPER(iterate_all) {
+HASHMAP_TEST(iterate_all) {
   struct hashmap_s hashmap;
   int x[27] = {0};
   int total = 0;
@@ -228,7 +244,7 @@ MY_TEST_WRAPPER(iterate_all) {
   hashmap_destroy(&hashmap);
 }
 
-MY_TEST_WRAPPER(num_entries) {
+HASHMAP_TEST(num_entries) {
   struct hashmap_s hashmap;
   int x = 42;
   ASSERT_EQ(0, hashmap_create(1, &hashmap));
@@ -242,7 +258,7 @@ MY_TEST_WRAPPER(num_entries) {
   hashmap_destroy(&hashmap);
 }
 
-MY_TEST_WRAPPER(hash_conflict) {
+HASHMAP_TEST(hash_conflict) {
   struct hashmap_s hashmap;
 
   int x = 42;
@@ -270,7 +286,7 @@ MY_TEST_WRAPPER(hash_conflict) {
   hashmap_destroy(&hashmap);
 }
 
-MY_TEST_WRAPPER(issue_20) {
+HASHMAP_TEST(issue_20) {
   struct hashmap_s hashmap;
   const char *key = "192.168.2.2hv_api.udache.com/abc/def";
   unsigned int len = HASHMAP_CAST(unsigned, strlen(key));
@@ -288,7 +304,7 @@ MY_TEST_WRAPPER(issue_20) {
   hashmap_destroy(&hashmap);
 }
 
-MY_TEST_WRAPPER(one_byte) {
+HASHMAP_TEST(one_byte) {
   unsigned char data[256];
   int i;
   struct hashmap_s hashmap;
@@ -309,7 +325,7 @@ MY_TEST_WRAPPER(one_byte) {
   hashmap_destroy(&hashmap);
 }
 
-MY_TEST_WRAPPER(two_bytes) {
+HASHMAP_TEST(two_bytes) {
   unsigned short *data;
   int i;
   struct hashmap_s hashmap;
