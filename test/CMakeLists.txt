@@ -53,6 +53,8 @@ else()
   set(HASHMAP_C_USE_STD_FLAG FALSE)
 endif()
 
+# Only Unix-style Clang drivers understand -Wno-c++98-compat.
+set(HASHMAP_CXX98_COMPAT_FLAG "")
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   set(HASHMAP_CXX_WARNINGS "-Wall -Wextra -Werror")
   set(HASHMAP_CXX_USE_STD_FLAG TRUE)
@@ -63,6 +65,7 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}"
   else()
     set(HASHMAP_CXX_WARNINGS "-Wall -Wextra -Weverything -Werror -Wno-poison-system-directories")
     set(HASHMAP_CXX_USE_STD_FLAG TRUE)
+    set(HASHMAP_CXX98_COMPAT_FLAG "-Wno-c++98-compat")
   endif()
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set(HASHMAP_CXX_WARNINGS "/Wall /WX /wd4514 /wd5045")
@@ -117,12 +120,12 @@ if(NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
 endif()
 
 # C++ files — each compiled under a specific C++ standard.
-hashmap_set_cxx_flags(test.cpp   "" "-Wno-c++98-compat")
+hashmap_set_cxx_flags(test.cpp   "" ${HASHMAP_CXX98_COMPAT_FLAG})
 hashmap_set_cxx_flags(test98.cpp "-std=gnu++98")
-hashmap_set_cxx_flags(test11.cpp "-std=c++11" "-Wno-c++98-compat")
-hashmap_set_cxx_flags(test14.cpp "-std=c++14" "-Wno-c++98-compat")
-hashmap_set_cxx_flags(test17.cpp "-std=c++17" "-Wno-c++98-compat")
-hashmap_set_cxx_flags(test20.cpp "-std=c++20" "-Wno-c++98-compat")
+hashmap_set_cxx_flags(test11.cpp "-std=c++11" ${HASHMAP_CXX98_COMPAT_FLAG})
+hashmap_set_cxx_flags(test14.cpp "-std=c++14" ${HASHMAP_CXX98_COMPAT_FLAG})
+hashmap_set_cxx_flags(test17.cpp "-std=c++17" ${HASHMAP_CXX98_COMPAT_FLAG})
+hashmap_set_cxx_flags(test20.cpp "-std=c++20" ${HASHMAP_CXX98_COMPAT_FLAG})
 
 set(HASHMAP_TEST_SOURCES
   ../hashmap.h
