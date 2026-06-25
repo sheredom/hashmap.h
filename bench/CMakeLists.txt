@@ -34,6 +34,11 @@ add_executable(hashmap_bench
   sse42.c
 )
 
+find_library(MATH_LIBRARY m)
+if(MATH_LIBRARY)
+    target_link_libraries(hashmap_bench PUBLIC ${MATH_LIBRARY})
+endif()
+
 if (NOT "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
   if("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
     set_source_files_properties(sse42.c PROPERTIES
