@@ -192,6 +192,25 @@ HASHMAP_WEAK int hashmap_put(struct hashmap_s *const hashmap,
                              const void *const key, const hashmap_uint32_t len,
                              void *const value);
 
+/// @brief Put an element into the hashmap and return its previous value.
+/// @param hashmap The hashmap to insert into.
+/// @param key The string key to use.
+/// @param len The length of the string key.
+/// @param value The value to insert.
+/// @param out_old_value Optional storage for the previous value. It is set to
+/// NULL if the key was newly inserted or the operation failed.
+/// @return On success 0 is returned.
+///
+/// A NULL output means no non-NULL previous value was returned; this includes
+/// insertion and replacement of a stored NULL. The return code indicates
+/// operation success, not whether an entry was replaced. The hashmap does not
+/// take ownership of keys or values. If out_old_value is non-NULL, it must not
+/// overlap the hashmap, the key bytes, or the object pointed to by value. It
+/// may point to the variable passed as value, since value is passed by value.
+HASHMAP_WEAK int hashmap_put_and_return_old(
+    struct hashmap_s *const hashmap, const void *const key,
+    const hashmap_uint32_t len, void *const value, void **const out_old_value);
+
 /// @brief Get an element from the hashmap.
 /// @param hashmap The hashmap to get from.
 /// @param key The string key to use.
@@ -209,6 +228,23 @@ HASHMAP_WEAK void *hashmap_get(const struct hashmap_s *const hashmap,
 HASHMAP_WEAK int hashmap_remove(struct hashmap_s *const hashmap,
                                 const void *const key,
                                 const hashmap_uint32_t len);
+
+/// @brief Remove an element from the hashmap and return its value.
+/// @param hashmap The hashmap to remove from.
+/// @param key The string key to use.
+/// @param len The length of the string key.
+/// @param out_value Optional storage for the removed value. It is set to NULL
+/// if the key was not found or the operation failed.
+/// @return On success 0 is returned; otherwise non-zero is returned.
+///
+/// A successful removal of a stored NULL value is distinguished from a missing
+/// key by the return code. The hashmap does not take ownership of keys or
+/// values. If out_value is non-NULL, it must not overlap the hashmap or the
+/// key bytes. The output may point to the variable passed as key because the
+/// key pointer and length are passed by value.
+HASHMAP_WEAK int hashmap_remove_and_return_value(
+    struct hashmap_s *const hashmap, const void *const key,
+    const hashmap_uint32_t len, void **const out_value);
 
 /// @brief Remove an element from the hashmap.
 /// @param hashmap The hashmap to remove from.
@@ -333,19 +369,35 @@ int hashmap_create_ex(struct hashmap_create_options_s options,
   return 0;
 }
 
-int hashmap_put(struct hashmap_s *const m, const void *const key,
-                const hashmap_uint32_t len, void *const value) {
+static int hashmap_put_internal(struct hashmap_s *const m,
+                                const void *const key,
+                                const hashmap_uint32_t len,
+                                void *const value,
+                                void **const out_old_value) {
   hashmap_uint32_t index;
+  void *old_value = HASHMAP_NULL;
+  int had_old_value = 0;
 
   if ((HASHMAP_NULL == key) || (0 == len)) {
+    if (HASHMAP_NULL != out_old_value) {
+      *out_old_value = HASHMAP_NULL;
+    }
     return 1;
   }
 
   /* Find a place to put our value. */
   while (!hashmap_hash_helper(m, key, len, &index)) {
     if (hashmap_rehash_helper(m)) {
+      if (HASHMAP_NULL != out_old_value) {
+        *out_old_value = HASHMAP_NULL;
+      }
       return 1;
     }
+  }
+
+  if (m->data[index].in_use) {
+    old_value = m->data[index].data;
+    had_old_value = 1;
   }
 
   /* Set the data. */
@@ -360,7 +412,24 @@ int hashmap_put(struct hashmap_s *const m, const void *const key,
     m->size++;
   }
 
+  if (HASHMAP_NULL != out_old_value) {
+    *out_old_value = had_old_value ? old_value : HASHMAP_NULL;
+  }
+
   return 0;
+}
+
+int hashmap_put(struct hashmap_s *const m, const void *const key,
+                const hashmap_uint32_t len, void *const value) {
+  return hashmap_put_internal(m, key, len, value, HASHMAP_NULL);
+}
+
+int hashmap_put_and_return_old(struct hashmap_s *const m,
+                               const void *const key,
+                               const hashmap_uint32_t len,
+                               void *const value,
+                               void **const out_old_value) {
+  return hashmap_put_internal(m, key, len, value, out_old_value);
 }
 
 void *hashmap_get(const struct hashmap_s *const m, const void *const key,
@@ -388,11 +457,20 @@ void *hashmap_get(const struct hashmap_s *const m, const void *const key,
   return HASHMAP_NULL;
 }
 
-int hashmap_remove(struct hashmap_s *const m, const void *const key,
-                   const hashmap_uint32_t len) {
+static int hashmap_remove_internal(struct hashmap_s *const m,
+                                   const void *const key,
+                                   const hashmap_uint32_t len,
+                                   void **const out_value,
+                                   const void **const out_key) {
   hashmap_uint32_t i, curr;
 
   if ((HASHMAP_NULL == key) || (0 == len)) {
+    if (HASHMAP_NULL != out_value) {
+      *out_value = HASHMAP_NULL;
+    }
+    if (HASHMAP_NULL != out_key) {
+      *out_key = HASHMAP_NULL;
+    }
     return 1;
   }
 
@@ -404,51 +482,56 @@ int hashmap_remove(struct hashmap_s *const m, const void *const key,
 
     if (m->data[index].in_use) {
       if (m->comparer(m->data[index].key, m->data[index].key_len, key, len)) {
+        void *const removed_value = m->data[index].data;
+        const void *const removed_key = m->data[index].key;
+
         /* Blank out the fields including in_use */
         memset(&m->data[index], 0, sizeof(struct hashmap_element_s));
 
         /* Reduce the size */
         m->size--;
 
+        if (HASHMAP_NULL != out_value) {
+          *out_value = removed_value;
+        }
+        if (HASHMAP_NULL != out_key) {
+          *out_key = removed_key;
+        }
+
         return 0;
       }
     }
   }
 
+  if (HASHMAP_NULL != out_value) {
+    *out_value = HASHMAP_NULL;
+  }
+  if (HASHMAP_NULL != out_key) {
+    *out_key = HASHMAP_NULL;
+  }
+
   return 1;
+}
+
+int hashmap_remove(struct hashmap_s *const m, const void *const key,
+                   const hashmap_uint32_t len) {
+  return hashmap_remove_internal(m, key, len, HASHMAP_NULL, HASHMAP_NULL);
+}
+
+int hashmap_remove_and_return_value(struct hashmap_s *const m,
+                                    const void *const key,
+                                    const hashmap_uint32_t len,
+                                    void **const out_value) {
+  return hashmap_remove_internal(m, key, len, out_value, HASHMAP_NULL);
 }
 
 const void *hashmap_remove_and_return_key(struct hashmap_s *const m,
                                           const void *const key,
                                           const hashmap_uint32_t len) {
-  hashmap_uint32_t i, curr;
+  const void *stored_key = HASHMAP_NULL;
+  int result = hashmap_remove_internal(m, key, len, HASHMAP_NULL, &stored_key);
 
-  if ((HASHMAP_NULL == key) || (0 == len)) {
-    return HASHMAP_NULL;
-  }
-
-  curr = hashmap_hash_helper_int_helper(m, key, len);
-
-  /* Linear probing, if necessary */
-  for (i = 0; i < HASHMAP_LINEAR_PROBE_LENGTH; i++) {
-    const hashmap_uint32_t index = curr + i;
-
-    if (m->data[index].in_use) {
-      if (m->comparer(m->data[index].key, m->data[index].key_len, key, len)) {
-        const void *const stored_key = m->data[index].key;
-
-        /* Blank out the fields */
-        memset(&m->data[index], 0, sizeof(struct hashmap_element_s));
-
-        /* Reduce the size */
-        m->size--;
-
-        return stored_key;
-      }
-    }
-  }
-
-  return HASHMAP_NULL;
+  return (0 == result) ? stored_key : HASHMAP_NULL;
 }
 
 int hashmap_iterate(const struct hashmap_s *const m,

@@ -76,6 +76,29 @@ if (0 != hashmap_put(&hashmap, "?", strlen("?"), &question)) {
 
 Notice that multiple entries of _differing_ types can exist in the same hashmap.
 The hashmap is not typed - it can store any `void*` data as the value for a key.
+Keys and values remain owned by the caller; the hashmap does not copy or free
+them.
+
+To replace a value and retrieve the previous value, use
+`hashmap_put_and_return_old`. This example assumes the existing value and
+`new_value` are caller-owned heap allocations compatible with `free`:
+
+```c
+void *old_value = NULL;
+if (0 != hashmap_put_and_return_old(&hashmap, "life", strlen("life"),
+                                    new_value, &old_value)) {
+  // The replacement failed; the hashmap did not take ownership of new_value.
+} else if (NULL != old_value && old_value != new_value) {
+  // Release the old value only if it differs from the retained value.
+  free(old_value);
+}
+```
+
+When inserting a new key, or when replacing a stored `NULL`, `old_value` is
+`NULL`. The return code distinguishes successful insertion/replacement from
+failure. The output pointer may itself be `NULL` when the previous value is not
+needed. Otherwise it must not overlap the hashmap, the key bytes, or the object
+pointed to by the new value.
 
 ### Get Something from a Hashmap
 
@@ -105,6 +128,24 @@ if (0 != hashmap_remove(&hashmap, "x", strlen("x"))) {
 The function will return non-zero if the element is not found. Note that the key
 used to get an element does not have to be the same pointer used to put an
 element in the hashmap - but the string slice must match for a hit to occur.
+
+To retrieve and release an owned value during removal, use
+`hashmap_remove_and_return_value`. This example assumes the stored value is a
+caller-owned heap allocation compatible with `free`:
+
+```c
+void *removed_value = NULL;
+if (0 == hashmap_remove_and_return_value(&hashmap, "x", strlen("x"),
+                                         &removed_value)) {
+  // Release only after successful removal. free(NULL) is also safe.
+  free(removed_value);
+}
+```
+
+The output is set to `NULL` for a missing key or invalid input. A successful
+removal of a stored `NULL` value is distinguished from a missing key by the
+return code. The output pointer may be `NULL`; otherwise it must not overlap the
+hashmap or key bytes. Neither removal API frees keys or values.
 
 ### Iterate Over a Hashmap
 

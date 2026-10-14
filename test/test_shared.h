@@ -75,6 +75,14 @@ static int custom_comparer(const void *const a, const hashmap_uint32_t a_len,
                       HASHMAP_PTR_CAST(const char *, b), a_len);
 }
 
+static hashmap_uint32_t constant_hasher(const hashmap_uint32_t seed,
+                                        const void *const s,
+                                        const hashmap_uint32_t len) {
+  (void)s;
+  (void)len;
+  return seed;
+}
+
 HASHMAP_TEST(create_ex) {
   int thing = 42;
   const char *const key = "foo";
@@ -147,6 +155,152 @@ HASHMAP_TEST(remove) {
                            HASHMAP_CAST(unsigned, strlen("foo")), &x));
   ASSERT_EQ(0, hashmap_remove(&hashmap, "foo",
                               HASHMAP_CAST(unsigned, strlen("foo"))));
+  hashmap_destroy(&hashmap);
+}
+
+HASHMAP_TEST(put_and_return_old) {
+  struct hashmap_s hashmap;
+  char key[] = "foo";
+  char equivalent_key[] = "foo";
+  int original = 42;
+  int replacement = 13;
+  int aliased_replacement = 77;
+  void *old_value = &replacement;
+  void *value_and_output = &aliased_replacement;
+
+  ASSERT_EQ(0, hashmap_create(1, &hashmap));
+  ASSERT_EQ(0, hashmap_put_and_return_old(&hashmap, key, 3, &original,
+                                          &old_value));
+  ASSERT_FALSE(old_value);
+  ASSERT_EQ(1u, hashmap_num_entries(&hashmap));
+
+  ASSERT_EQ(0, hashmap_put_and_return_old(&hashmap, equivalent_key, 3,
+                                          &replacement, &old_value));
+  ASSERT_EQ(&original, HASHMAP_PTR_CAST(int *, old_value));
+  ASSERT_EQ(1u, hashmap_num_entries(&hashmap));
+  ASSERT_EQ(&replacement,
+            HASHMAP_PTR_CAST(int *, hashmap_get(&hashmap, key, 3)));
+
+  ASSERT_EQ(0, hashmap_put_and_return_old(&hashmap, equivalent_key, 3,
+                                          value_and_output,
+                                          &value_and_output));
+  ASSERT_EQ(&replacement,
+            HASHMAP_PTR_CAST(int *, value_and_output));
+  ASSERT_EQ(&aliased_replacement,
+            HASHMAP_PTR_CAST(int *, hashmap_get(&hashmap, key, 3)));
+  ASSERT_EQ(1u, hashmap_num_entries(&hashmap));
+
+  /* The output is optional, including when inserting a new entry. */
+  ASSERT_EQ(0, hashmap_put_and_return_old(&hashmap, "bar", 3, NULL, NULL));
+  ASSERT_EQ(2u, hashmap_num_entries(&hashmap));
+
+  ASSERT_EQ(0, hashmap_put(&hashmap, "null", 4, NULL));
+  old_value = &replacement;
+  ASSERT_EQ(0, hashmap_put_and_return_old(&hashmap, "null", 4, &replacement,
+                                          &old_value));
+  ASSERT_FALSE(old_value);
+  ASSERT_EQ(3u, hashmap_num_entries(&hashmap));
+  ASSERT_EQ(&replacement,
+            HASHMAP_PTR_CAST(int *, hashmap_get(&hashmap, "null", 4)));
+
+  old_value = &original;
+  ASSERT_EQ(1, hashmap_put_and_return_old(&hashmap, NULL, 3, &replacement,
+                                          &old_value));
+  ASSERT_FALSE(old_value);
+  ASSERT_EQ(3u, hashmap_num_entries(&hashmap));
+  hashmap_destroy(&hashmap);
+}
+
+HASHMAP_TEST(remove_and_return_value) {
+  struct hashmap_s hashmap;
+  int value = 42;
+  void *removed_value = &value;
+
+  ASSERT_EQ(0, hashmap_create(1, &hashmap));
+  ASSERT_EQ(0, hashmap_put(&hashmap, "value", 5, &value));
+  ASSERT_EQ(0, hashmap_remove_and_return_value(&hashmap, "value", 5,
+                                               &removed_value));
+  ASSERT_EQ(&value, HASHMAP_PTR_CAST(int *, removed_value));
+  ASSERT_EQ(0u, hashmap_num_entries(&hashmap));
+
+  removed_value = &value;
+  ASSERT_EQ(1, hashmap_remove_and_return_value(&hashmap, "missing", 7,
+                                               &removed_value));
+  ASSERT_FALSE(removed_value);
+  ASSERT_EQ(0u, hashmap_num_entries(&hashmap));
+
+  ASSERT_EQ(0, hashmap_put(&hashmap, "null", 4, NULL));
+  removed_value = &value;
+  ASSERT_EQ(0, hashmap_remove_and_return_value(&hashmap, "null", 4,
+                                               &removed_value));
+  ASSERT_FALSE(removed_value);
+  ASSERT_EQ(0u, hashmap_num_entries(&hashmap));
+  hashmap_destroy(&hashmap);
+}
+
+HASHMAP_TEST(return_old_with_custom_hash_and_compare) {
+  struct hashmap_s hashmap;
+  struct hashmap_create_options_s options;
+  char key[] = "key";
+  char equivalent_key[] = "key";
+  int original = 42;
+  int replacement = 13;
+  void *old_value = HASHMAP_NULL;
+
+  memset(&options, 0, sizeof(options));
+  options.initial_capacity = 2;
+  options.hasher = &constant_hasher;
+  options.comparer = &custom_comparer;
+  ASSERT_EQ(0, hashmap_create_ex(options, &hashmap));
+
+  ASSERT_EQ(0, hashmap_put_and_return_old(&hashmap, key, 3, &original,
+                                          &old_value));
+  ASSERT_FALSE(old_value);
+  ASSERT_EQ(0, hashmap_put_and_return_old(&hashmap, equivalent_key, 3,
+                                          &replacement, &old_value));
+  ASSERT_EQ(&original, HASHMAP_PTR_CAST(int *, old_value));
+  ASSERT_EQ(1u, hashmap_num_entries(&hashmap));
+
+  ASSERT_EQ(0, hashmap_remove_and_return_value(&hashmap, equivalent_key, 3,
+                                               &old_value));
+  ASSERT_EQ(&replacement, HASHMAP_PTR_CAST(int *, old_value));
+  ASSERT_EQ(0u, hashmap_num_entries(&hashmap));
+  hashmap_destroy(&hashmap);
+}
+
+HASHMAP_TEST(return_old_after_growth) {
+  struct hashmap_s hashmap;
+  char keys[32];
+  char equivalent_key;
+  int values[32];
+  int replacement = 99;
+  int index;
+  void *old_value = HASHMAP_NULL;
+
+  ASSERT_EQ(0, hashmap_create(1, &hashmap));
+  for (index = 0; index < 32; index++) {
+    keys[index] = HASHMAP_CAST(char, 'a' + index);
+    values[index] = index;
+    ASSERT_EQ(0, hashmap_put_and_return_old(&hashmap, &keys[index], 1,
+                                            &values[index], &old_value));
+    ASSERT_FALSE(old_value);
+  }
+
+  ASSERT_LT(2u, hashmap_capacity(&hashmap));
+  ASSERT_EQ(32u, hashmap_num_entries(&hashmap));
+  equivalent_key = keys[17];
+  ASSERT_EQ(0, hashmap_put_and_return_old(&hashmap, &equivalent_key, 1,
+                                          &replacement, &old_value));
+  ASSERT_EQ(&values[17], HASHMAP_PTR_CAST(int *, old_value));
+  ASSERT_EQ(32u, hashmap_num_entries(&hashmap));
+
+  old_value = HASHMAP_NULL;
+  ASSERT_EQ(0, hashmap_remove_and_return_value(&hashmap, &equivalent_key, 1,
+                                               &old_value));
+  ASSERT_EQ(&replacement, HASHMAP_PTR_CAST(int *, old_value));
+  ASSERT_EQ(31u, hashmap_num_entries(&hashmap));
+  ASSERT_EQ(&values[18],
+            HASHMAP_PTR_CAST(int *, hashmap_get(&hashmap, &keys[18], 1)));
   hashmap_destroy(&hashmap);
 }
 
@@ -264,6 +418,7 @@ HASHMAP_TEST(hash_conflict) {
   int x = 42;
   int y = 13;
   int z = -53;
+  void *removed_value = HASHMAP_NULL;
 
   ASSERT_EQ(0, hashmap_create(4, &hashmap));
 
@@ -274,8 +429,13 @@ HASHMAP_TEST(hash_conflict) {
   ASSERT_EQ(3u, hashmap_num_entries(&hashmap));
 
   // Now we remove the middle value.
-  ASSERT_EQ(0, hashmap_remove(&hashmap, "002", 3));
+  ASSERT_EQ(0, hashmap_remove_and_return_value(&hashmap, "002", 3,
+                                               &removed_value));
+  ASSERT_EQ(&y, HASHMAP_PTR_CAST(int *, removed_value));
   ASSERT_EQ(2u, hashmap_num_entries(&hashmap));
+  ASSERT_EQ(&x, HASHMAP_PTR_CAST(int *, hashmap_get(&hashmap, "000", 3)));
+  ASSERT_FALSE(hashmap_get(&hashmap, "002", 3));
+  ASSERT_EQ(&z, HASHMAP_PTR_CAST(int *, hashmap_get(&hashmap, "007", 3)));
 
   // And now attempt to insert the last value again. There was a bug where this
   // would insert a new entry incorrectly instead of resolving to the previous
