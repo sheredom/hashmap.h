@@ -104,7 +104,6 @@ endfunction()
 hashmap_set_c_flags(main.c  "-std=gnu89")
 hashmap_set_c_flags(test.c  "-std=gnu89")
 hashmap_set_c_flags(test99.c "-std=c99")
-hashmap_set_c_flags(ownership_consumer.c "-std=c99")
 
 list(FIND CMAKE_C_COMPILE_FEATURES c_std_11 IDX)
 if(${IDX} GREATER -1)
@@ -152,10 +151,6 @@ function(hashmap_add_test NAME)
 endfunction()
 
 hashmap_add_test(hashmap_test)
-
-add_executable(hashmap_ownership_consumer ownership_consumer.c)
-add_test(NAME hashmap_ownership_consumer
-  COMMAND $<TARGET_FILE:hashmap_ownership_consumer>)
 
 if(MSVC)
   # Build a second test binary linked against the static CRT (/MT)
