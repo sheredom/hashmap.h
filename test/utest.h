@@ -277,10 +277,22 @@ UTEST_C_FUNC __declspec(dllimport) int __stdcall QueryPerformanceFrequency(
 #endif
 #endif
 
+#if defined(__clang__)
+#define UTEST_INITIALIZER_BEGIN_DISABLE_WARNINGS                               \
+  _Pragma("clang diagnostic push")                                             \
+      _Pragma("clang diagnostic ignored \"-Wglobal-constructors\"")
+#define UTEST_INITIALIZER_END_DISABLE_WARNINGS _Pragma("clang diagnostic pop")
+#else
+#define UTEST_INITIALIZER_BEGIN_DISABLE_WARNINGS
+#define UTEST_INITIALIZER_END_DISABLE_WARNINGS
+#endif
+
 #define UTEST_INLINE inline
 
 #define UTEST_INITIALIZER(f)                                                   \
+  UTEST_INITIALIZER_BEGIN_DISABLE_WARNINGS                                     \
   static void f(void) UTEST_ATTRIBUTE(constructor);                            \
+  UTEST_INITIALIZER_END_DISABLE_WARNINGS                                       \
   static void f(void)
 #endif
 
